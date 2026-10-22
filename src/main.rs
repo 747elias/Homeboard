@@ -468,6 +468,32 @@ async fn forecast(
         })
 }
 #[derive(Deserialize)]
+struct Coordinates {
+    latitude: f64,
+    longitude: f64,
+}
+async fn preview_weather(
+    State(app): State<Arc<App>>,
+    axum::Extension(Peer(ip)): axum::Extension<Peer>,
+    headers: HeaderMap,
+    Query(q): Query<Coordinates>,
+) -> Api<Json<weather::CachedForecast>> {
+    session(&app, &headers, ip).await?;
+    if !q.latitude.is_finite()
+        || !q.longitude.is_finite()
+        || q.latitude.abs() > 90.0
+        || q.longitude.abs() > 180.0
+    {
+        return Err(bad("Ungültige Koordinaten."));
+    }
+    app.weather
+        .fetch(&app.client, q.latitude, q.longitude)
+        .await
+        .map(Json)
+        .map_err(|_| ApiError(StatusCode::BAD_GATEWAY, "Wetter gerade nicht erreichbar."))
+}
+
+#[derive(Deserialize)]
 struct Search {
     name: String,
 }
@@ -557,9 +583,11 @@ async fn embed_status(
             let xfo = response.headers().get("x-frame-options").is_some();
             let csp = response
                 .headers()
-                .get("content-security-policy")
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("");
+                .get_all("content-security-policy")
+                .iter()
+                .filter_map(|v| v.to_str().ok())
+                .collect::<Vec<_>>()
+                .join(";");
             let restricted = csp.split(';').map(str::trim).any(|d| {
                 d.starts_with("frame-ancestors")
                     && !d
@@ -618,6 +646,7 @@ fn router(app: Arc<App>) -> Router {
         .route("/api/editor/password", post(change_password))
         .route("/api/editor/config", get(editor_config).put(save_config))
         .route("/api/editor/geocode", get(geocode))
+        .route("/api/editor/weather", get(preview_weather))
         .fallback(|| async {
             (
                 StatusCode::NOT_FOUND,
@@ -685,7 +714,12 @@ fn bind(server: &ServerConfig) -> Result<std::net::TcpListener> {
     sock.listen(128)?;
     Ok(sock.into())
 }
-async fn run(dir: PathBuf, mut shutdown: watch::Receiver<bool>, console: bool) -> Result<()> {
+async fn run(
+    dir: PathBuf,
+    mut shutdown: watch::Receiver<bool>,
+    console: bool,
+    prepared_listener: Option<std::net::TcpListener>,
+) -> Result<()> {
     let server = read_server(&dir)?;
     let app = Arc::new(App {
         config: RwLock::new(config::load(&dir)?),
@@ -704,13 +738,19 @@ async fn run(dir: PathBuf, mut shutdown: watch::Receiver<bool>, console: bool) -
         embeds: Mutex::new(HashMap::new()),
         dir,
     });
-    let listener = tokio::net::TcpListener::from_std(bind(&server)?)?;
+    let listener = tokio::net::TcpListener::from_std(match prepared_listener {
+        Some(listener) => listener,
+        None => bind(&server)?,
+    })?;
     tracing::info!(port = server.port, "backend_started");
     axum::serve(
         listener,
         router(app).into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(async move {
+        if *shutdown.borrow() {
+            return;
+        }
         if console {
             tokio::select! { _ = tokio::signal::ctrl_c() => {}, _ = shutdown.changed() => {} }
         } else {
@@ -797,7 +837,7 @@ fn main() -> Result<()> {
     }
     let _guard = logging(&dir)?;
     let (_tx, rx) = watch::channel(false);
-    let result = tokio::runtime::Runtime::new()?.block_on(run(dir, rx, true));
+    let result = tokio::runtime::Runtime::new()?.block_on(run(dir, rx, true, None));
     if result.is_err() {
         tracing::error!("backend_start_failed_check_port_config_and_permissions");
     }

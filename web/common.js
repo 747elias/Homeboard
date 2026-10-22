@@ -61,7 +61,7 @@ export function renderWidget(w, { editor = false, preview = false } = {}) {
     let alive = true;
     const update = async () => {
       try {
-        const r = await api(`/api/weather/${encodeURIComponent(w.id)}`); if (!alive) return;
+        const r = await api(preview ? `/api/editor/weather?latitude=${encodeURIComponent(s.latitude)}&longitude=${encodeURIComponent(s.longitude)}` : `/api/weather/${encodeURIComponent(w.id)}`); if (!alive) return;
         const f=r.data, info=weatherInfo(f.current.weather_code, f.current.is_day===1);
         body.replaceChildren();
         const current=el('div','weather-current'); const temperatures=el('div'); temperatures.append(el('span','weather-temperature',`${Math.round(f.current.temperature_2m)}°`),el('span','weather-condition',info[1])); current.append(temperatures,el('span','weather-art',info[0])); body.append(current);
@@ -74,8 +74,7 @@ export function renderWidget(w, { editor = false, preview = false } = {}) {
         const footer=el('div','weather-credit');footer.append(el('span',r.stale?'stale':'',r.stale?'Offline · letzte bekannte Daten':`Aktualisiert ${new Date(r.fetched_at).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})}`));const credit=openLink('https://open-meteo.com/','Open-Meteo');credit.className='credit-link';footer.append(credit);body.append(footer);
       } catch(e) { if(alive) { body.replaceChildren(el('div','widget-error',e.message)); } }
     };
-    if(preview){body.replaceChildren(el('div','widget-error','Wetterdaten der gespeicherten Widget-Konfiguration. Neue Orte werden nach dem Speichern geladen.'));}
-    else { update(); const timer=setInterval(update,900000); dispose=()=>{alive=false;clearInterval(timer);}; }
+    update(); const timer=setInterval(update,900000); dispose=()=>{alive=false;clearInterval(timer);};
   } else if (w.kind === 'embed') {
     fallback('Einbettung wird geprüft …'); let alive=true;
     const install=(status)=>{

@@ -7,6 +7,7 @@
 AppId={{B23F1B13-563F-44E3-9E29-C151047510B4}
 AppName={#AppName}
 AppVersion={#AppVersion}
+VersionInfoVersion=0.1.0.0
 AppPublisher=Homeboard Contributors
 AppPublisherURL=https://github.com/747elias/Homeboard
 DefaultDirName={autopf}\Homeboard
@@ -41,8 +42,6 @@ Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\Homeboard – Dashboard"; Filename: "{app}\homeboard.url"
 Name: "{group}\Homeboard – Editor"; Filename: "{app}\editor.url"
 Name: "{group}\Homeboard deinstallieren"; Filename: "{uninstallexe}"
-[UninstallRun]
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ""{app}\Uninstall.ps1"""; Flags: runhidden waituntilterminated; RunOnceId: "HomeboardService"
 [Code]
 var PortPage: TInputQueryWizardPage;
     SelectedPort: Integer;
@@ -92,6 +91,11 @@ begin
   Result := True;
 end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var Code: Integer;
 begin
+  if CurUninstallStep = usUninstall then begin
+    if (not Exec(PSPath(), '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\Uninstall.ps1') + '"', '', SW_HIDE, ewWaitUntilTerminated, Code)) or (Code <> 0) then
+      RaiseException('Der Homeboard-Dienst konnte nicht entfernt werden. Dienststatus und Berechtigungen prüfen und die Deinstallation erneut starten.');
+  end;
   if (CurUninstallStep = usPostUninstall) and (not KeepData) then DelTree(ExpandConstant('{commonappdata}\Homeboard'), True, True, True);
 end;

@@ -48,13 +48,14 @@ fn service_main(_arguments: Vec<OsString>) {
         let args: Vec<String> = std::env::args().collect();
         let dir = crate::data_dir(&args)?;
         let _guard = crate::logging(&dir)?;
-        let runtime = tokio::runtime::Runtime::new()?;
-        // Bind/config preflight before reporting Running; run() rebinds immediately afterwards.
-        drop(crate::bind(&crate::read_server(&dir)?)?);
-        crate::config::load(&dir)?;
-        crate::auth::AuthFile::load(&dir)?;
-        handle.set_service_status(status(ServiceState::Running, 0))?;
-        let result = runtime.block_on(crate::run(dir, rx, false));
+        let result = (|| -> anyhow::Result<()> {
+            let runtime = tokio::runtime::Runtime::new()?;
+            let listener = crate::bind(&crate::read_server(&dir)?)?;
+            crate::config::load(&dir)?;
+            crate::auth::AuthFile::load(&dir)?;
+            handle.set_service_status(status(ServiceState::Running, 0))?;
+            runtime.block_on(crate::run(dir, rx, false, Some(listener)))
+        })();
         if result.is_err() {
             tracing::error!("service_failed_check_port_config_and_permissions");
         }

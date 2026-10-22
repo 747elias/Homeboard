@@ -120,6 +120,20 @@ async fn access_headers_login_csrf_save_and_logout() {
     let v: Value =
         serde_json::from_slice(&to_bytes(login.into_body(), 10000).await.unwrap()).unwrap();
     let token = v["csrf"].as_str().unwrap();
+    assert_eq!(
+        request(
+            a.clone(),
+            "GET",
+            "/api/editor/weather?latitude=91&longitude=0",
+            "127.0.0.1",
+            String::new(),
+            &cookie,
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::BAD_REQUEST
+    );
     let mut c = a.config.read().await.clone();
     c.widgets[0].title = "Geändert".into();
     let body = serde_json::to_string(&c).unwrap();
