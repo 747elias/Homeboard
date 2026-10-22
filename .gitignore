@@ -1,0 +1,10 @@
+/target/
+/work/
+/output/
+*.log
+*.exe
+*.zip
+.env
+.env.*
+/data/
+.DS_Store

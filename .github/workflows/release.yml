@@ -1,0 +1,50 @@
+name: Pre-release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: x86_64-pc-windows-msvc
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings
+      - run: cargo test --locked --target x86_64-pc-windows-msvc
+      - run: cargo build --locked --release --target x86_64-pc-windows-msvc
+      - name: Installer kompilieren
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\Homeboard.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Dienst und Installer prüfen
+        shell: pwsh
+        run: ./tests/windows-smoke.ps1
+      - name: Prüfsummen
+        shell: pwsh
+        run: |
+          Copy-Item target/x86_64-pc-windows-msvc/release/homeboard.exe dist/homeboard.exe
+          $lines = Get-ChildItem dist/*.exe | Sort-Object Name | ForEach-Object {
+            (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower() + '  ' + $_.Name
+          }
+          $lines | Set-Content dist/SHA256SUMS.txt -Encoding ascii
+      - name: GitHub Pre-release veröffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -ne 'tag') { throw 'Release nur auf einem v*-Tag starten.' }
+          $tag=$env:GITHUB_REF_NAME
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag dist/homeboard.exe dist/Homeboard-Setup-0.1.0-beta.exe dist/SHA256SUMS.txt --clobber
+          } else {
+            gh release create $tag dist/homeboard.exe dist/Homeboard-Setup-0.1.0-beta.exe dist/SHA256SUMS.txt --verify-tag --prerelease --title "Homeboard $tag" --notes-file docs/RELEASE.md
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
