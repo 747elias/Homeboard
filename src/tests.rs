@@ -8,7 +8,7 @@ fn app(dir: &FsPath) -> Arc<App> {
     Arc::new(App {
         dir: dir.into(),
         config: RwLock::new(config::load(dir).unwrap()),
-        tasks: RwLock::new(tasks::load(dir).unwrap()),
+        tasks: RwLock::new(Some(tasks::load(dir).unwrap())),
         auth: Mutex::new(auth::AuthFile::default()),
         sessions: Mutex::new(auth::Sessions::default()),
         limiter: Mutex::new(auth::Limiter::default()),
@@ -257,7 +257,7 @@ fn dns_rebinding_hosts_and_origin() {
 async fn tasks_require_session_csrf_revision_and_obey_local_editor_policy() {
     let dir = tempfile::tempdir().unwrap();
     let a = app(dir.path());
-    let mut d = a.tasks.read().await.clone();
+    let mut d = a.tasks.read().await.clone().unwrap();
     d.tasks.push(tasks::Task {
         id: "api-task".into(),
         title: "Lokal planen".into(),
@@ -400,4 +400,50 @@ async fn tasks_require_session_csrf_revision_and_obey_local_editor_policy() {
         serde_json::from_slice(&to_bytes(status.into_body(), 10000).await.unwrap()).unwrap();
     assert_eq!(v["can_login"], false);
     assert!(v["csrf"].is_null());
+}
+
+#[tokio::test]
+async fn unavailable_tasks_do_not_block_dashboard_or_overwrite_the_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = app(dir.path());
+    *a.tasks.write().await = None;
+    std::fs::write(dir.path().join("tasks.json"), "broken-data").unwrap();
+    assert_eq!(
+        request(a.clone(), "GET", "/", "127.0.0.1", String::new(), "", "")
+            .await
+            .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        request(
+            a.clone(),
+            "GET",
+            "/api/dashboard",
+            "127.0.0.1",
+            String::new(),
+            "",
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        request(
+            a.clone(),
+            "GET",
+            "/api/tasks",
+            "127.0.0.1",
+            String::new(),
+            "",
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::SERVICE_UNAVAILABLE
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("tasks.json")).unwrap(),
+        "broken-data"
+    );
 }

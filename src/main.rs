@@ -35,7 +35,7 @@ type NeighborCache = HashMap<IpAddr, (Instant, Option<[u8; 6]>)>;
 struct App {
     dir: PathBuf,
     config: RwLock<Config>,
-    tasks: RwLock<tasks::TaskData>,
+    tasks: RwLock<Option<tasks::TaskData>>,
     auth: Mutex<auth::AuthFile>,
     sessions: Mutex<auth::Sessions>,
     limiter: Mutex<auth::Limiter>,
@@ -625,8 +625,16 @@ pub async fn bounded_json<T: serde::de::DeserializeOwned>(
     }
     Ok(serde_json::from_slice(&bytes)?)
 }
-async fn tasks_read(State(app): State<Arc<App>>) -> Json<tasks::TaskData> {
-    Json(app.tasks.read().await.clone())
+fn tasks_unavailable() -> ApiError {
+    ApiError(StatusCode::SERVICE_UNAVAILABLE, "Aufgabendatei konnte nicht geladen werden. Eine Aufgaben-Sicherung wiederherstellen und den Dienst neu starten.")
+}
+async fn tasks_read(State(app): State<Arc<App>>) -> Api<Json<tasks::TaskData>> {
+    app.tasks
+        .read()
+        .await
+        .clone()
+        .map(Json)
+        .ok_or_else(tasks_unavailable)
 }
 async fn tasks_session(
     State(app): State<Arc<App>>,
@@ -655,7 +663,8 @@ async fn tasks_save(
         bad("Aufgabendaten ungültig. Termine, Projekte, Links und Grössenlimits prüfen.")
     })?;
     let mut current = app.tasks.write().await;
-    if value.revision != current.revision {
+    let previous = current.as_ref().ok_or_else(tasks_unavailable)?;
+    if value.revision != previous.revision {
         return Err(ApiError(StatusCode::CONFLICT,"Aufgaben wurden inzwischen geändert. Bitte neu laden; dein offener Entwurf bleibt erhalten."));
     }
     if headers
@@ -665,20 +674,20 @@ async fn tasks_save(
     {
         value
             .apply_transitions(
-                &current,
+                previous,
                 chrono::Utc::now()
                     .with_timezone(&chrono_tz::Europe::Zurich)
                     .date_naive(),
             )
             .map_err(|_| bad("Aufgabenänderung ungültig oder Grössenlimit erreicht."))?;
     }
-    value.revision = current.revision.checked_add(1).ok_or_else(internal)?;
+    value.revision = previous.revision.checked_add(1).ok_or_else(internal)?;
     let (dir, data) = (app.dir.clone(), value.clone());
     tokio::task::spawn_blocking(move || tasks::save(&dir, &data))
         .await
         .map_err(|_| internal())?
         .map_err(|_| internal())?;
-    *current = value.clone();
+    *current = Some(value.clone());
     tracing::info!("tasks_saved");
     Ok(Json(value))
 }
@@ -788,7 +797,13 @@ async fn run(
     let server = read_server(&dir)?;
     let app = Arc::new(App {
         config: RwLock::new(config::load(&dir)?),
-        tasks: RwLock::new(tasks::load(&dir)?),
+        tasks: RwLock::new(match tasks::load(&dir) {
+            Ok(data) => Some(data),
+            Err(_) => {
+                tracing::error!("tasks_load_failed_restore_backup");
+                None
+            }
+        }),
         auth: Mutex::new(auth::AuthFile::load(&dir)?),
         sessions: Mutex::new(auth::Sessions::default()),
         limiter: Mutex::new(auth::Limiter::default()),

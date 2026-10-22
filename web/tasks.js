@@ -611,6 +611,8 @@ function renderBulk() {
 }
 function render() {
   if (!data) return;
+  $("#data-tools").disabled = busy;
+  $("#column-tools").disabled = false;
   renderSidebar();
   renderOverview();
   renderFilters();

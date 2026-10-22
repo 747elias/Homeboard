@@ -10,7 +10,7 @@ Die Aufgabenverwaltung verwendet dieselbe Anmeldung, Whitelist, localhost-Bearbe
 
 ## Prüfungen
 
-- 17 Rust-Unit-/HTTP-Tests: bisherige Schutzmechanismen, Aufgaben-Persistenz/Sicherungen, Datenvalidierung, Monatsende/Werktage, wiederholtes Speichern, Migration alter Karten, Session-/CSRF-/Revisionsschutz und Leser-/Bearbeiterzugriff.
+- 18 Rust-Unit-/HTTP-Tests: bisherige Schutzmechanismen, Aufgaben-Persistenz/Sicherungen, Datenvalidierung, Monatsende/Werktage, wiederholtes Speichern, Migration alter Karten, Session-/CSRF-/Revisionsschutz und Leser-/Bearbeiterzugriff. Eine unlesbare Aufgabendatei blockiert nur die Aufgaben-API; Dashboard und Editor bleiben erreichbar, die Datei bleibt erhalten.
 - Vier JavaScript-Testgruppen: Zürcher Tagesgrenze/Sommerzeit, kombinierte Filter/Unteraufgabensuche, Sortierung/Matrix und Excel-Formelschutz im CSV.
 - Browserprüfung: alle elf Ansichten, neue Aufgabe/Details, direkte Prioritätsänderung, Suche, Gruppierung, Spalten, gespeicherte Ansicht, Unteraufgabe, Notiz, Zeit, Duplizieren, Rückgängig, Kanban-Drag-and-drop, Export/Import, Archiv/Wiederherstellung und Anmeldung. Screenshots enthalten eigens angelegte Testaufgaben aus der tatsächlichen Anwendung.
 - Der isolierte Browser-Smoke-Test ist im Repository enthalten und nutzt stets eine neue temporäre Aufgabenablage. Zusätzlich bestätigt: tägliche Wiederholung mit Folgeaufgabe, Mehrfach-Archivierung mit Rückgängig, Projektanlage und Aufgaben-Widget im Editor/Dashboard.

@@ -95,6 +95,8 @@ Alle Ansichten arbeiten mit denselben Daten. Zusätzlich gibt es schnelle Filter
 
 Unter „Daten“: vollständiges JSON mit Aufgaben/Projekten/eigenen Ansichten exportieren oder importieren. Beim Import **Zusammenführen** (vorhandene IDs behalten) oder **Ersetzen** wählen. CSV exportiert die gefilterten Aufgaben mit UTF-8-BOM und Semikolon für Excel. Führende Formelzeichen werden neutralisiert. CSV-Import ist nicht Bestandteil dieser Version. JSON-Import und Rückgängig lösen keine neuen Wiederholungen aus.
 
+Eine beschädigte Aufgabendatei sperrt nur den Aufgabenbereich. Dashboard und Editor bleiben erreichbar, die beschädigte Datei wird nicht überschrieben.
+
 Aufgaben liegen getrennt von der Dashboard-Konfiguration in `%ProgramData%\Homeboard\tasks.json`. Der Dashboard-JSON-Export bleibt für das Layout zuständig; Aufgaben separat exportieren. Zehn automatische Sicherungen liegen in `backups\tasks\`. Für eine Wiederherstellung Dienst stoppen, ein Aufgaben-Backup als `tasks.json` kopieren und Dienst starten. Es gelten maximal 2.000 Aufgaben, 100 Projekte, 100 gespeicherte Ansichten, 100 Unteraufgaben/50 Notizen je Aufgabe und 1 MB kompakte JSON-Daten pro Aufgabenablage. Kein externer Sync, keine Konto-/Rollenverwaltung und keine Betriebssystem-Erinnerungen in v0.2.
 
 ### Upgrade von 0.1
