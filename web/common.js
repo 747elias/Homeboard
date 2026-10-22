@@ -8,8 +8,8 @@ export async function api(path, options = {}) {
   return value;
 }
 export const clone = v => JSON.parse(JSON.stringify(v));
-export const kinds = { clock: 'Uhr & Datum', weather: 'Wetter', embed: 'Einbettung', text: 'Text', heading: 'Überschrift', link: 'Link-Button', image: 'Bild', divider: 'Trennlinie', spacer: 'Abstand', code: 'Eigener Code' };
-export const icons = { clock: '◷', weather: '☀', embed: '▦', text: 'T', heading: 'H', link: '↗', image: '▧', divider: '—', spacer: '↕', code: '⌘' };
+export const kinds = { tasks: 'Aufgaben', clock: 'Uhr & Datum', weather: 'Wetter', embed: 'Einbettung', text: 'Text', heading: 'Überschrift', link: 'Link-Button', image: 'Bild', divider: 'Trennlinie', spacer: 'Abstand', code: 'Eigener Code' };
+export const icons = { tasks: '✓', clock: '◷', weather: '☀', embed: '▦', text: 'T', heading: 'H', link: '↗', image: '▧', divider: '—', spacer: '↕', code: '⌘' };
 export function applyAppearance(a, custom = true) {
   document.documentElement.dataset.theme = a.theme;
   document.documentElement.style.setProperty('--accent', a.accent);
@@ -24,7 +24,7 @@ export function safeUrl(value) { try { const u = new URL(value); return ['http:'
 export function openLink(url, text = 'Öffnen') { const a = el('a', 'button open-button', text + ' ↗'); a.href = safeUrl(url) || '#'; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
 export function newWidget(kind) {
   return { id: crypto.randomUUID ? crypto.randomUUID() : `w-${Date.now()}-${Math.random().toString(16).slice(2)}`, kind, title: kinds[kind], x: 0, y: 0, w: kind === 'weather' ? 6 : 4, h: kind === 'weather' ? 5 : ['divider','spacer'].includes(kind) ? 1 : 3,
-    settings: { text: '', url: '', icon: icons[kind], timezone: 'Europe/Zurich', latitude: 47.3769, longitude: 8.5417, place: 'Zürich', html: '', css: '', js: '', embed_mode: 'auto' } };
+    settings: { text: '', url: '', icon: icons[kind], timezone: 'Europe/Zurich', latitude: 47.3769, longitude: 8.5417, place: 'Zürich', html: '', css: '', js: '', embed_mode: 'auto', task_view: 'all' } };
 }
 export function settle(widgets, changed) {
   // Deterministic collision resolution; move the other cards down, preserving their size.
@@ -51,6 +51,16 @@ export function renderWidget(w, { editor = false, preview = false } = {}) {
     body.classList.add('editor-card-body');
     const info = ['text','heading'].includes(w.kind) ? s.text : w.kind === 'weather' ? s.place : w.kind === 'clock' ? s.timezone : w.kind === 'code' ? 'HTML · CSS · JavaScript · Sandbox' : s.url || kinds[w.kind];
     body.append(el('span', 'editor-kind', kinds[w.kind]), el('p', 'muted editor-description', info));
+  } else if (w.kind === 'tasks') {
+    let alive=true;
+    const update=async()=>{try{const data=await api('/api/tasks');if(!alive)return;
+      const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Zurich',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()),part=t=>parts.find(p=>p.type===t).value,today=`${part('year')}-${part('month')}-${part('day')}`;
+      const tasks=data.tasks.filter(t=>!t.archived&&t.status!=='done'&&(s.task_view!=='today'||t.due===today)&&(s.task_view!=='starred'||t.starred)&&(s.task_view!=='overdue'||(t.due&&t.due<today))).sort((a,b)=>(b.priority-a.priority)||(a.due||'9999').localeCompare(b.due||'9999'));
+      body.replaceChildren();const count=el('div','mini-tasks-count');count.append(el('strong','',tasks.length),el('span','',s.task_view==='today'?'heute fällig':'offen'));body.append(count);
+      for(const t of tasks.slice(0,3)){const row=el('div','mini-task-row');row.append(el('span'),el('span','',t.title));body.append(row);}if(!tasks.length)body.append(el('p','small muted','Ein freier Kopf. Füge deine nächste Aufgabe hinzu.'));
+      const link=el('a','mini-task-link','Aufgaben öffnen →');link.href='/tasks'+(s.task_view&&s.task_view!=='all'?'?focus='+s.task_view:'');body.append(link);
+    }catch(e){if(alive)body.replaceChildren(el('p','small muted',e.message));}};
+    update();const timer=setInterval(update,30000);dispose=()=>{alive=false;clearInterval(timer);};
   } else if (w.kind === 'clock') {
     const time = el('div', 'clock-time'); const date = el('div', 'clock-date'); const zone = el('div', 'clock-zone', '◷ ' + s.timezone);
     body.append(time, date, zone);

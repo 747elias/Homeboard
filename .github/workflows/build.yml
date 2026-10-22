@@ -14,6 +14,7 @@ jobs:
         with:
           components: rustfmt, clippy
           targets: x86_64-pc-windows-msvc
+      - run: node --test tests/tasks-core.test.mjs
       - run: cargo fmt --check
       - run: cargo clippy --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings
       - run: cargo test --locked --target x86_64-pc-windows-msvc
@@ -31,4 +32,4 @@ jobs:
           name: homeboard-windows-build
           path: |
             target/x86_64-pc-windows-msvc/release/homeboard.exe
-            dist/Homeboard-Setup-0.1.0-beta.exe
+            dist/Homeboard-Setup-0.2.0-beta.exe

@@ -3,6 +3,7 @@ mod auth;
 mod config;
 #[cfg(windows)]
 mod service;
+mod tasks;
 mod weather;
 
 use anyhow::{Context, Result};
@@ -34,6 +35,7 @@ type NeighborCache = HashMap<IpAddr, (Instant, Option<[u8; 6]>)>;
 struct App {
     dir: PathBuf,
     config: RwLock<Config>,
+    tasks: RwLock<tasks::TaskData>,
     auth: Mutex<auth::AuthFile>,
     sessions: Mutex<auth::Sessions>,
     limiter: Mutex<auth::Limiter>,
@@ -128,7 +130,8 @@ async fn guard(
         || path == "/edit/"
         || path == "/preview"
         || path.starts_with("/api/editor/")
-        || path.starts_with("/api/auth/");
+        || path.starts_with("/api/auth/")
+        || (path == "/api/tasks" && req.method() != "GET" && req.method() != "HEAD");
     let config = app.config.read().await;
     let mut allowed = access::allowed(ip, &config.access.entries, None);
     if !allowed
@@ -266,6 +269,7 @@ async fn save_config(
     Json(mut value): Json<Config>,
 ) -> Api<Json<Config>> {
     csrf(&app, &headers, ip).await?;
+    value.migrate_tasks();
     value.validate().map_err(|_| {
         bad("Konfiguration ungültig. Widget-Werte, URLs, Darstellung und Whitelist prüfen.")
     })?;
@@ -554,7 +558,7 @@ async fn embed_status(
     }
     let u = url::Url::parse(&s.url).map_err(|_| bad("Ungültige URL."))?;
     let host = u.host_str().unwrap_or("");
-    if host == "tasks.google.com" || host == "keep.google.com" || s.embed_mode == "link" {
+    if s.embed_mode == "link" {
         return Ok(fallback("Diesen Dienst im eigenen Tab öffnen."));
     }
     if let Some((t, status)) = app.embeds.lock().await.get(&s.url) {
@@ -621,6 +625,64 @@ pub async fn bounded_json<T: serde::de::DeserializeOwned>(
     }
     Ok(serde_json::from_slice(&bytes)?)
 }
+async fn tasks_read(State(app): State<Arc<App>>) -> Json<tasks::TaskData> {
+    Json(app.tasks.read().await.clone())
+}
+async fn tasks_session(
+    State(app): State<Arc<App>>,
+    axum::Extension(Peer(ip)): axum::Extension<Peer>,
+    headers: HeaderMap,
+) -> Json<Value> {
+    let can_login = ip.is_loopback() || !app.config.read().await.access.editor_local_only;
+    let token = if can_login {
+        session(&app, &headers, ip).await.ok()
+    } else {
+        None
+    };
+    let configured = app.auth.lock().await.password_hash.is_some();
+    Json(
+        json!({"can_login":can_login,"configured":configured,"authenticated":token.is_some(),"csrf":token}),
+    )
+}
+async fn tasks_save(
+    State(app): State<Arc<App>>,
+    axum::Extension(Peer(ip)): axum::Extension<Peer>,
+    headers: HeaderMap,
+    Json(mut value): Json<tasks::TaskData>,
+) -> Api<Json<tasks::TaskData>> {
+    csrf(&app, &headers, ip).await?;
+    value.validate().map_err(|_| {
+        bad("Aufgabendaten ungültig. Termine, Projekte, Links und Grössenlimits prüfen.")
+    })?;
+    let mut current = app.tasks.write().await;
+    if value.revision != current.revision {
+        return Err(ApiError(StatusCode::CONFLICT,"Aufgaben wurden inzwischen geändert. Bitte neu laden; dein offener Entwurf bleibt erhalten."));
+    }
+    if headers
+        .get("x-homeboard-operation")
+        .and_then(|v| v.to_str().ok())
+        != Some("restore")
+    {
+        value
+            .apply_transitions(
+                &current,
+                chrono::Utc::now()
+                    .with_timezone(&chrono_tz::Europe::Zurich)
+                    .date_naive(),
+            )
+            .map_err(|_| bad("Aufgabenänderung ungültig oder Grössenlimit erreicht."))?;
+    }
+    value.revision = current.revision.checked_add(1).ok_or_else(internal)?;
+    let (dir, data) = (app.dir.clone(), value.clone());
+    tokio::task::spawn_blocking(move || tasks::save(&dir, &data))
+        .await
+        .map_err(|_| internal())?
+        .map_err(|_| internal())?;
+    *current = value.clone();
+    tracing::info!("tasks_saved");
+    Ok(Json(value))
+}
+
 fn router(app: Arc<App>) -> Router {
     Router::new()
         .route("/", get(|| async { asset("index.html") }))
@@ -637,6 +699,9 @@ fn router(app: Arc<App>) -> Router {
             }),
         )
         .route("/assets/{*name}", get(static_asset))
+        .route("/tasks", get(|| async { asset("tasks.html") }))
+        .route("/api/tasks", get(tasks_read).put(tasks_save))
+        .route("/api/tasks/session", get(tasks_session))
         .route("/api/dashboard", get(dashboard))
         .route("/api/weather/{id}", get(forecast))
         .route("/api/embed/{id}", get(embed_status))
@@ -723,6 +788,7 @@ async fn run(
     let server = read_server(&dir)?;
     let app = Arc::new(App {
         config: RwLock::new(config::load(&dir)?),
+        tasks: RwLock::new(tasks::load(&dir)?),
         auth: Mutex::new(auth::AuthFile::load(&dir)?),
         sessions: Mutex::new(auth::Sessions::default()),
         limiter: Mutex::new(auth::Limiter::default()),
@@ -733,7 +799,7 @@ async fn run(
             .timeout(Duration::from_secs(8))
             .connect_timeout(Duration::from_secs(4))
             .redirect(reqwest::redirect::Policy::none())
-            .user_agent("Homeboard/0.1.0-beta")
+            .user_agent("Homeboard/0.2.0-beta")
             .build()?,
         embeds: Mutex::new(HashMap::new()),
         dir,
@@ -782,7 +848,7 @@ fn logging(dir: &FsPath) -> Result<tracing_appender::non_blocking::WorkerGuard> 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
-        println!("Homeboard 0.1.0-beta\n--service  Windows-Dienst\n--check-port [--port 80]  Port prüfen (ohne Datenänderung)\n--reset-access  Whitelist zurücksetzen\n--reset-password  Admin-Passwort zurücksetzen\n--data-dir PFAD  Datenverzeichnis überschreiben");
+        println!("Homeboard 0.2.0-beta\n--service  Windows-Dienst\n--check-port [--port 80]  Port prüfen (ohne Datenänderung)\n--reset-access  Whitelist zurücksetzen\n--reset-password  Admin-Passwort zurücksetzen\n--data-dir PFAD  Datenverzeichnis überschreiben");
         return Ok(());
     }
     if args.iter().any(|a| a == "--check-port") {

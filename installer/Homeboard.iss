@@ -1,5 +1,5 @@
 #define AppName "Homeboard"
-#define AppVersion "0.1.0-beta"
+#define AppVersion "0.2.0-beta"
 #ifndef AppExe
   #define AppExe "..\target\x86_64-pc-windows-msvc\release\homeboard.exe"
 #endif
@@ -7,7 +7,7 @@
 AppId={{B23F1B13-563F-44E3-9E29-C151047510B4}
 AppName={#AppName}
 AppVersion={#AppVersion}
-VersionInfoVersion=0.1.0.0
+VersionInfoVersion=0.2.0.0
 AppPublisher=Homeboard Contributors
 AppPublisherURL=https://github.com/747elias/Homeboard
 DefaultDirName={autopf}\Homeboard
@@ -17,7 +17,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
-OutputBaseFilename=Homeboard-Setup-0.1.0-beta
+OutputBaseFilename=Homeboard-Setup-0.2.0-beta
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -40,6 +40,7 @@ Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{group}\Homeboard – Dashboard"; Filename: "{app}\homeboard.url"
+Name: "{group}\Homeboard – Aufgaben"; Filename: "{app}\tasks.url"
 Name: "{group}\Homeboard – Editor"; Filename: "{app}\editor.url"
 Name: "{group}\Homeboard deinstallieren"; Filename: "{uninstallexe}"
 [Code]

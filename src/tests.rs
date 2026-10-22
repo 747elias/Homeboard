@@ -8,6 +8,7 @@ fn app(dir: &FsPath) -> Arc<App> {
     Arc::new(App {
         dir: dir.into(),
         config: RwLock::new(config::load(dir).unwrap()),
+        tasks: RwLock::new(tasks::load(dir).unwrap()),
         auth: Mutex::new(auth::AuthFile::default()),
         sessions: Mutex::new(auth::Sessions::default()),
         limiter: Mutex::new(auth::Limiter::default()),
@@ -250,4 +251,153 @@ fn dns_rebinding_hosts_and_origin() {
     assert!(!same_origin(&h));
     h.insert("origin", HeaderValue::from_static("http://localhost"));
     assert!(same_origin(&h));
+}
+
+#[tokio::test]
+async fn tasks_require_session_csrf_revision_and_obey_local_editor_policy() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = app(dir.path());
+    let mut d = a.tasks.read().await.clone();
+    d.tasks.push(tasks::Task {
+        id: "api-task".into(),
+        title: "Lokal planen".into(),
+        ..tasks::Task::default()
+    });
+    let body = serde_json::to_string(&d).unwrap();
+    assert_eq!(
+        request(
+            a.clone(),
+            "PUT",
+            "/api/tasks",
+            "127.0.0.1",
+            body.clone(),
+            "",
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let login = request(
+        a.clone(),
+        "POST",
+        "/api/auth/login",
+        "127.0.0.1",
+        r#"{"password":"Task-Test-123456"}"#.into(),
+        "",
+        "",
+    )
+    .await;
+    let cookie = login.headers()["set-cookie"].to_str().unwrap().to_owned();
+    let v: Value =
+        serde_json::from_slice(&to_bytes(login.into_body(), 10000).await.unwrap()).unwrap();
+    let csrf = v["csrf"].as_str().unwrap();
+    assert_eq!(
+        request(
+            a.clone(),
+            "PUT",
+            "/api/tasks",
+            "127.0.0.1",
+            body.clone(),
+            &cookie,
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(
+        request(
+            a.clone(),
+            "PUT",
+            "/api/tasks",
+            "127.0.0.1",
+            body.clone(),
+            &cookie,
+            csrf
+        )
+        .await
+        .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        tasks::load(dir.path()).unwrap().tasks[0].title,
+        "Lokal planen"
+    );
+    assert_eq!(
+        request(
+            a.clone(),
+            "PUT",
+            "/api/tasks",
+            "127.0.0.1",
+            body,
+            &cookie,
+            csrf
+        )
+        .await
+        .status(),
+        StatusCode::CONFLICT
+    );
+    a.config
+        .write()
+        .await
+        .access
+        .entries
+        .push("192.0.2.22".into());
+    assert_eq!(
+        request(
+            a.clone(),
+            "GET",
+            "/api/tasks",
+            "192.0.2.22",
+            String::new(),
+            "",
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::OK
+    );
+    assert_eq!(
+        request(
+            a.clone(),
+            "PUT",
+            "/api/tasks",
+            "192.0.2.22",
+            "{}".into(),
+            "",
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(
+        request(
+            a.clone(),
+            "GET",
+            "/tasks",
+            "192.0.2.99",
+            String::new(),
+            "",
+            ""
+        )
+        .await
+        .status(),
+        StatusCode::FORBIDDEN
+    );
+    let status = request(
+        a,
+        "GET",
+        "/api/tasks/session",
+        "192.0.2.22",
+        String::new(),
+        "",
+        "",
+    )
+    .await;
+    let v: Value =
+        serde_json::from_slice(&to_bytes(status.into_body(), 10000).await.unwrap()).unwrap();
+    assert_eq!(v["can_login"], false);
+    assert!(v["csrf"].is_null());
 }

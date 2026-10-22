@@ -1,29 +1,34 @@
-# Abschlussbericht · Homeboard 0.1.0-beta
+# Abschlussbericht · Homeboard 0.2.0-beta
 
-Stand: 22. Oktober 2026. Rust/Axum/Tokio mit eingebetteter Oberfläche, ohne zusätzliche Laufzeitumgebung und ohne Docker.
+Ersetzt die früheren Google-Tasks-/Keep-Link-Karten durch lokale Aufgabenverwaltung. Google Kalender bleibt optional erhalten. Rust/Axum/Tokio, eine EXE mit eingebetteter Oberfläche und Windows-Dienst wie bisher.
 
-## Gebaut und getestet
+## Lieferumfang
 
-- Linux: kompilierbarer Quellcode, optimierter Build und eigenständig aus einem Ordner ohne Frontend-Dateien gestartete Release-Binärdatei (alle eingebetteten Assets erreichbar), `cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings` und zwölf bestandene Unit-/HTTP-Tests.
-- Chromium: Dashboard, Passwort-Erstvergabe, Login/Logout, Text-Widget, Duplizieren, Rückgängig, echtes Pointer-Drag & Drop, Grössenänderung, Speichern, Vorschau und JSON-Export/-Import ohne JavaScript-Fehler.
-- 403: echter Backend-Aufruf über die nicht erlaubte Netzwerkadresse liefert Status 403; die tatsächliche HTML-Antwort wurde als Screenshot erfasst.
-- Eigener Code: JavaScript-Zähler funktioniert im tatsächlichen Sandbox-iframe; Zugriff auf das übergeordnete Dokument wird blockiert.
-- Open-Meteo: echte Backend-Abfrage erfolgreich. Screenshots zeigen Live-Wetterdaten und die tatsächliche Browseroberfläche, keine simulierte Wetterantwort. Fünf Tage vollständig sichtbar. Desktop und mobile Darstellung geprüft; kein horizontaler Überlauf auf 390 px. Neue Wetterkoordinaten werden auch in der Vorschau über den angemeldeten Backend-Endpunkt geladen.
-- Windows auf GitHub `windows-latest`: erster vollständiger [Build-Lauf](https://github.com/747elias/Homeboard/actions/runs/39766738344) erfolgreich. MSVC-Build, rustfmt, Clippy, zwölf Tests und Inno-Setup-Kompilierung bestanden.
-- Derselbe Windows-Lauf hat den Installer ausgeführt und automatischen Dienst/LocalService, HTTP, Anmeldung, Speichern, Dienstneustart, Konfigurationspersistenz, Zugriff-/Passwort-Reset und Deinstallation mit Datenerhalt erfolgreich geprüft.
+Elf vollständige Ansichten: Tabelle, Liste, Kanban, Monatskalender, Wochenplan, Agenda, Zeitleiste, Prioritätenmatrix, Projekte, Statistiken und Archiv. Dazu eigene gespeicherte Ansichten, direkte Tabellenbearbeitung, Filter/Suche/Gruppierung/Sortierung, Mehrfachaktionen, Projekte/Farben, Unteraufgaben, Tags, Notizen, Links, Favoriten, Wiederholungen, Timer/Minuten, Vorlagen, CSV-/JSON-Export und JSON-Import. Automatisches Speichern, Revisionskonflikte, Rückgängig und zehn Aufgaben-Sicherungen.
+
+Die Aufgabenverwaltung verwendet dieselbe Anmeldung, Whitelist, localhost-Bearbeitungsbeschränkung und denselben CSRF-Schutz wie der Editor. Erlaubte IPs dürfen Aufgaben lesen. Keine externe Aufgaben-API und keine Google-Anmeldung für Aufgaben.
+
+## Prüfungen
+
+- 17 Rust-Unit-/HTTP-Tests: bisherige Schutzmechanismen, Aufgaben-Persistenz/Sicherungen, Datenvalidierung, Monatsende/Werktage, wiederholtes Speichern, Migration alter Karten, Session-/CSRF-/Revisionsschutz und Leser-/Bearbeiterzugriff.
+- Vier JavaScript-Testgruppen: Zürcher Tagesgrenze/Sommerzeit, kombinierte Filter/Unteraufgabensuche, Sortierung/Matrix und Excel-Formelschutz im CSV.
+- Browserprüfung: alle elf Ansichten, neue Aufgabe/Details, direkte Prioritätsänderung, Suche, Gruppierung, Spalten, gespeicherte Ansicht, Unteraufgabe, Notiz, Zeit, Duplizieren, Rückgängig, Kanban-Drag-and-drop, Export/Import, Archiv/Wiederherstellung und Anmeldung. Screenshots enthalten eigens angelegte Testaufgaben aus der tatsächlichen Anwendung.
+- Windows-Workflows führen MSVC-Build, rustfmt, Clippy, Rust-/JavaScript-Tests, Inno-Setup und den Installer-Smoke-Test aus. Dieser prüft Installation, LocalService/Autostart-Konfiguration, HTTP, Anmeldung, Dashboard-/Aufgaben-Speichern, Persistenz nach Dienstneustart, Reset und Deinstallation mit Datenerhalt.
+
+Die konkreten Ergebnisse der Windows-Läufe und Release-Uploads sind über die folgenden Links dokumentiert. Die Chat-Auslieferung nennt den verifizierten Endstand.
+
+## Links und Dateien
+
+- [Repository](https://github.com/747elias/Homeboard), Branch main.
+- [Pre-release v0.2.0-beta](https://github.com/747elias/Homeboard/releases/tag/v0.2.0-beta).
+- [Build-Workflow](https://github.com/747elias/Homeboard/actions/workflows/build.yml).
+- [Release-Workflow](https://github.com/747elias/Homeboard/actions/workflows/release.yml).
+- Release-Dateien: `homeboard.exe`, `Homeboard-Setup-0.2.0-beta.exe`, `SHA256SUMS.txt`.
 
 ## Noch auf echtem Windows 11 zu testen
 
-Der Windows-Dienst und der Installer sind über einen Windows-CI-Runner getestet. Noch offen sind ein **physischer Windows-11-Neustart mit Zugriff vor Benutzeranmeldung**, reale LAN-Geräte mit erlaubten/gesperrten IPv4-/IPv6-Adressen und MAC-Nachbartabellen, Firewall-Profile im echten Netzwerk, SmartScreen, Google-Kalender mit persönlichem Konto und die interaktiven Setup-/Deinstallationsdialoge einschliesslich Datenlöschung. Der [manuelle Testplan](TESTPLAN.md) enthält die Schritte. Das ist keine Behauptung eines abgeschlossenen Hardwaretests.
-
-## Repository und Veröffentlichungsprüfung
-
-- [Repository Homeboard](https://github.com/747elias/Homeboard), Branch `main`, MIT-Lizenz.
-- [Pre-release v0.1.0-beta](https://github.com/747elias/Homeboard/releases/tag/v0.1.0-beta).
-- [Build-Workflow](https://github.com/747elias/Homeboard/actions/workflows/build.yml) und [Release-Workflow](https://github.com/747elias/Homeboard/actions/workflows/release.yml).
-- Release-Dateien: `homeboard.exe`, `Homeboard-Setup-0.1.0-beta.exe`, `SHA256SUMS.txt`. Der Release-Workflow veröffentlicht erst nach erfolgreichem Build und Installer-Smoke-Test. Die Release-Seite enthält die tatsächlich verfügbaren Dateien und ihre Metadaten.
-- [Weiterer Windows-Lauf des finalen Anwendungscodes](https://github.com/747elias/Homeboard/actions/runs/39767759323). Der vollständige Status und alle Protokolle sind über die Workflow-Links abrufbar.
+Physischer Neustart mit Zugriff vor Benutzeranmeldung, Upgrade einer realen 0.1-Installation, interaktive Setup-/Deinstallationsdialoge, Firewall-Profile, echte LAN-/IPv6-/MAC-Geräte sowie Kalender mit persönlichem Konto. Windows-CI ersetzt diesen Hardwaretest nicht. Der manuelle Testplan ist erweitert.
 
 ## Grenzen
 
-Google Tasks wird ehrlich als Link-Karte dargestellt. Unbekannte iframe-Ziele fallen im Automatikmodus konservativ auf eine Karte zurück; manuell aktivierte iframes behalten immer einen Öffnen-Link. MAC-Regeln funktionieren nur im selben lokalen Netz und sind spoofbar. HTTP überträgt im LAN unverschlüsselt; der Editor bleibt standardmässig nur lokal erreichbar. EXE und Setup sind unsigniert. Diese Grenzen und Wiederherstellungsbefehle sind in der deutschen README dokumentiert.
+Maximal 2.000 Aufgaben und 1 MB kompakte Aufgabendaten, 100 Projekte/eigene Ansichten; keine externe Synchronisation, Rollenverwaltung, Betriebssystem-Erinnerungen und kein CSV-Import. Ein Timer lebt im geöffneten Detailfenster und wird beim Speichern übernommen. Aufgaben beginnen ohne Beispieldaten. Wiederherstellung externer Kontoinhalte ist kein Bestandteil der Kartenmigration. EXE/Installer sind unsigniert; HTTP ist im LAN unverschlüsselt; MAC-Regeln bleiben auf das lokale Netz beschränkt und spoofbar.

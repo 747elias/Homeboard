@@ -37,6 +37,7 @@ pub struct Settings {
     pub css: String,
     pub js: String,
     pub embed_mode: String,
+    pub task_view: String,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -52,6 +53,7 @@ impl Default for Settings {
             css: String::new(),
             js: String::new(),
             embed_mode: "auto".into(),
+            task_view: "all".into(),
         }
     }
 }
@@ -139,28 +141,28 @@ impl Default for Config {
                 ),
                 make(
                     "tasks",
-                    "embed",
+                    "tasks",
                     "Meine Aufgaben",
                     5,
                     5,
                     4,
                     3,
                     Settings {
-                        url: "https://tasks.google.com/".into(),
+                        task_view: "all".into(),
                         icon: "✓".into(),
                         ..Settings::default()
                     },
                 ),
                 make(
                     "focus",
-                    "embed",
+                    "tasks",
                     "Heute im Fokus",
                     9,
                     5,
                     3,
                     3,
                     Settings {
-                        url: "https://keep.google.com/".into(),
+                        task_view: "today".into(),
                         icon: "◎".into(),
                         ..Settings::default()
                     },
@@ -199,6 +201,23 @@ pub fn validate_url(value: &str) -> Result<()> {
     Ok(())
 }
 impl Config {
+    pub fn migrate_tasks(&mut self) -> bool {
+        let mut changed = false;
+        for w in &mut self.widgets {
+            if matches!(w.kind.as_str(), "embed" | "link")
+                && url::Url::parse(&w.settings.url)
+                    .ok()
+                    .and_then(|u| u.host_str().map(str::to_owned))
+                    .is_some_and(|h| matches!(h.as_str(), "tasks.google.com" | "keep.google.com"))
+            {
+                w.kind = "tasks".into();
+                w.settings.url.clear();
+                w.settings.task_view = if w.id == "focus" { "today" } else { "all" }.into();
+                changed = true;
+            }
+        }
+        changed
+    }
     pub fn validate(&self) -> Result<()> {
         if self.version != 1 || self.widgets.len() > 100 {
             bail!("Ungültige Version oder zu viele Widgets (max. 100)");
@@ -235,7 +254,8 @@ impl Config {
                     .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
                 || !matches!(
                     w.kind.as_str(),
-                    "clock"
+                    "tasks"
+                        | "clock"
                         | "weather"
                         | "embed"
                         | "text"
@@ -270,6 +290,10 @@ impl Config {
                 || s.icon.chars().count() > 8
                 || s.timezone.len() > 80
                 || s.place.len() > 200
+                || !matches!(
+                    s.task_view.as_str(),
+                    "all" | "today" | "starred" | "overdue"
+                )
                 || !matches!(s.embed_mode.as_str(), "auto" | "link" | "iframe")
             {
                 bail!("Ungültige Widget-Einstellungen");
@@ -318,9 +342,13 @@ pub fn load(dir: &Path) -> Result<Config> {
         let c = Config::default();
         atomic_write(&path, &serde_json::to_vec_pretty(&c)?)?;
     }
-    let c: Config = serde_json::from_slice(&fs::read(path)?)
+    let mut c: Config = serde_json::from_slice(&fs::read(&path)?)
         .context("dashboard.json ist beschädigt; Sicherung wiederherstellen")?;
     c.validate()?;
+    if c.migrate_tasks() {
+        c.revision = c.revision.checked_add(1).context("Revision zu gross")?;
+        save(dir, &c)?;
+    }
     Ok(c)
 }
 pub fn save(dir: &Path, c: &Config) -> Result<()> {
@@ -361,6 +389,36 @@ mod tests {
         assert_eq!(fs::read_dir(d.path().join("backups")).unwrap().count(), 10);
         c.widgets[0].settings.url = "javascript:alert(1)".into();
         assert!(save(d.path(), &c).is_err());
+    }
+    #[test]
+    fn old_google_cards_migrate_once_without_changing_layout() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut old = Config::default();
+        old.widgets[3].kind = "embed".into();
+        old.widgets[3].settings.url = "https://tasks.google.com/".into();
+        old.widgets[4].kind = "embed".into();
+        old.widgets[4].settings.url = "https://keep.google.com/".into();
+        let mut value = serde_json::to_value(&old).unwrap();
+        for widget in value["widgets"].as_array_mut().unwrap() {
+            widget["settings"]
+                .as_object_mut()
+                .unwrap()
+                .remove("task_view");
+        }
+        fs::write(
+            dir.path().join("dashboard.json"),
+            serde_json::to_vec(&value).unwrap(),
+        )
+        .unwrap();
+        let loaded = load(dir.path()).unwrap();
+        assert_eq!(loaded.revision, 1);
+        assert_eq!(loaded.widgets[3].kind, "tasks");
+        assert!(loaded.widgets[3].settings.url.is_empty());
+        assert_eq!(loaded.widgets[3].x, old.widgets[3].x);
+        assert_eq!(loaded.widgets[4].settings.task_view, "today");
+        assert_eq!(loaded.widgets[2].kind, "embed");
+        assert_eq!(load(dir.path()).unwrap().revision, 1);
+        assert_eq!(fs::read_dir(dir.path().join("backups")).unwrap().count(), 1);
     }
     #[test]
     fn corrupt_config_is_not_overwritten() {

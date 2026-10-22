@@ -7,6 +7,6 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Service deletion failed' }
     }
     Get-NetFirewallRule -Name Homeboard-HTTP -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-    Remove-Item (Join-Path $PSScriptRoot 'homeboard.url'),(Join-Path $PSScriptRoot 'editor.url') -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $PSScriptRoot 'homeboard.url'),(Join-Path $PSScriptRoot 'editor.url'),(Join-Path $PSScriptRoot 'tasks.url') -ErrorAction SilentlyContinue
     exit 0
 } catch { exit 1 }

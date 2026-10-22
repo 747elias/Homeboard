@@ -1,6 +1,6 @@
 [package]
 name = "homeboard"
-version = "0.1.0-beta"
+version = "0.2.0-beta"
 edition = "2021"
 license = "MIT"
 description = "Persönliches lokales Dashboard für Windows 11"
@@ -10,6 +10,7 @@ anyhow = "1"
 argon2 = "0.5"
 axum = { version = "0.8", features = ["json", "query"] }
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
 ipnet = "2"
 mime_guess = "2"
 rand = "0.8"

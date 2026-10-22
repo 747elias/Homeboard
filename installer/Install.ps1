@@ -24,5 +24,6 @@ if ($OpenFirewall) { New-NetFirewallRule -Name Homeboard-HTTP -DisplayName 'Home
 $suffix=if($Port -eq 80){''}else{':'+$Port}
 "[InternetShortcut]`r`nURL=http://localhost$suffix/`r`n" | Set-Content (Join-Path $InstallDir 'homeboard.url') -Encoding Ascii
 "[InternetShortcut]`r`nURL=http://localhost$suffix/edit`r`n" | Set-Content (Join-Path $InstallDir 'editor.url') -Encoding Ascii
+"[InternetShortcut]`r`nURL=http://localhost$suffix/tasks`r`n" | Set-Content (Join-Path $InstallDir 'tasks.url') -Encoding Ascii
 Start-Service Homeboard
 (Get-Service Homeboard).WaitForStatus('Running',[TimeSpan]::FromSeconds(30))

@@ -1,4 +1,4 @@
-# Homeboard v0.1 · Beta
+# Homeboard v0.2 · Beta
 
 Ein persönliches Web-Dashboard für Windows 11 x64. **Eine EXE, ein lokaler Dienst, kein Browser-Autostart.** Selbst `http://localhost/` oder `http://<PC-IP>/` öffnen. Standardmässig ist nur localhost zugelassen.
 
@@ -10,15 +10,15 @@ Ein persönliches Web-Dashboard für Windows 11 x64. **Eine EXE, ein lokaler Die
 Rust, Axum und Tokio passen zu einem kleinen, eigenständigen Backend. HTML, CSS, JavaScript und das Logo werden mit `rust-embed` direkt in die Release-EXE eingebettet. Unter Windows wird die C-Laufzeit statisch gebunden. Keine zusätzliche Laufzeitumgebung, kein Node, kein Docker, keine CDN-Abhängigkeit und kein Frontend-Build nötig. Der Editor verwendet ein eigenes kleines Pointer-Raster ohne externe Bibliothek.
 
 - Dunkles Dashboard, helle Darstellung optional, responsive Karten, reduzierte Animationen bei entsprechender Systemeinstellung.
-- Standard: Uhr/Datum auf Deutsch in `Europe/Zurich`, Wetter für Zürich, Kalender-Karte und zwei To-do-Link-Karten. Kalender und persönliche URLs im Editor einrichten.
+- Standard: Uhr/Datum auf Deutsch in `Europe/Zurich`, Wetter für Zürich, Kalender-Karte und zwei lokale Aufgaben-Widgets (alle offenen Aufgaben und heute fällige Aufgaben). Den persönlichen Kalender-Link im Editor einrichten.
 - Wetter: aktuelle Werte, nächste Stunden und fünf Tage über Open-Meteo. Ortssuche ohne API-Key, alternativ Koordinaten. Serverseitiger Cache für 15 Minuten; bei Fehlern bleiben vorhandene Daten als veraltet markiert verfügbar. Nur das betroffene Widget zeigt einen Fehler. [Open-Meteo](https://open-meteo.com/) / [Wetterdaten-Lizenz](https://open-meteo.com/en/licence).
 - Editor mit Anmeldung: verschieben, Grösse ändern, hinzufügen, duplizieren, löschen, Einstellungen, Vorschau, Speichern, 40 Schritte Rückgängig, zehn automatische Dateisicherungen, JSON-Import/Export.
-- Bausteine: Uhr, Wetter, Text, Überschrift, Link, Bild-URL, iframe, Trennlinie, Abstand und eigener HTML/CSS/JS-Code.
+- Bausteine: lokale Aufgaben, Uhr, Wetter, Text, Überschrift, Link, Bild-URL, iframe, Trennlinie, Abstand und eigener HTML/CSS/JS-Code.
 - Globale Einstellungen: Hintergrundfarbe, CSS-Verlauf oder Bild-URL, Akzentfarbe, Schriftgrösse, Modus und eigenes CSS.
 
 ## Installation und erster Start
 
-1. Unter [Releases](https://github.com/747elias/Homeboard/releases) `Homeboard-Setup-0.1.0-beta.exe` herunterladen und optional gegen `SHA256SUMS.txt` prüfen.
+1. Unter [Releases](https://github.com/747elias/Homeboard/releases) `Homeboard-Setup-0.2.0-beta.exe` herunterladen und optional gegen `SHA256SUMS.txt` prüfen.
 2. Setup ausführen. **Einmalige Adminrechte sind erforderlich**, weil nach `C:\Program Files\Homeboard\` installiert, ein Windows-Dienst registriert und optional die Firewall geändert wird.
 3. Port 80 verwenden oder z. B. 8080 wählen. Das Setup stoppt bei belegtem Port mit einer verständlichen Meldung. Bei 8080 lautet die Adresse `http://localhost:8080/`.
 4. Die Checkbox für eine Firewall-Freigabe ist **standardmässig aus**. Falls gewünscht, öffnet sie nur das private Netzwerkprofil für die Homeboard-EXE und den gewählten TCP-Port.
@@ -48,13 +48,64 @@ New-Item -ItemType Directory .\homeboard-data -Force
 - **Daten:** JSON herunterladen oder importieren, anschliessend prüfen und speichern. Import ist zunächst nur ein Entwurf. Export enthält Widgets, URLs, Darstellung und Whitelist, niemals Passwort-Hash oder Sitzungen. URLs und eigener Code können persönliche Inhalte enthalten; Exporte entsprechend behandeln.
 - **Eigener Code:** HTML, CSS und JavaScript im Widget eingeben. Ausführung in einem iframe mit `sandbox="allow-scripts"` und eigener CSP, ohne `allow-same-origin`, Formulare, Pop-ups, Netzwerkzugriff über Fetch oder Navigation des übergeordneten Fensters. Externe Bilder sind möglich. Ein absichtlich rechenintensives Skript kann trotzdem Browserressourcen verbrauchen.
 
-## Google-Kalender und Google Tasks
+## Eigene Aufgabenverwaltung unter /tasks
+
+**Vollständig lokal, ohne Google Tasks, ohne Google-Konto und ohne externe Aufgaben-API.** Über „Aufgaben“ im Dashboard öffnen. Zum Bearbeiten mit dem bestehenden Homeboard-Admin-Passwort anmelden. Dieselbe Sitzung gilt im Editor. Erlaubte IPs können Aufgaben lesen; „Editor nur localhost“ schützt auch sämtliche Aufgaben-Schreibaktionen. Die Aufgabenverwaltung wendet eigenes globales Dashboard-CSS nicht an.
+
+![Aufgabentabelle](docs/screenshots/tasks-table.png)
+![Kanban](docs/screenshots/tasks-kanban.png)
+![Aufgabendetails](docs/screenshots/tasks-detail.png)
+
+### Elf Ansichten
+
+| Ansicht | Funktion |
+|---|---|
+| Tabelle | Status, Priorität, Projekt und Fälligkeit direkt ändern; Spalten ein-/ausblenden, kompakte Zeilen, Mehrfachauswahl |
+| Liste | Übersichtliche Zeilen mit Erledigen, Favoriten und Details |
+| Kanban | Vier Statusspalten; Karten zwischen Offen, In Arbeit, Wartet und Erledigt ziehen; alternativ Status im Detail ändern |
+| Kalender | Monatsraster, Vor-/Zurückblättern, neue Aufgabe über Tageszahl anlegen |
+| Wochenplan | Sieben Tage mit Karten, neue Aufgaben am gewählten Tag |
+| Agenda | Nach Fälligkeit gruppierte Aufgaben, inklusive „Ohne Termin“ |
+| Zeitleiste | Start-/Enddatum auf einer 28-Tage-Achse; verschiebbarer Zeitraum |
+| Prioritätenmatrix | Wichtig ab Priorität Mittel; dringend bei Fälligkeit in höchstens drei Tagen oder überfällig |
+| Projekte | Fortschritt, offene/erledigte Aufgaben, überfällige Aufgaben und erfasste Zeit pro Projekt |
+| Statistiken | Status, Prioritäten, Erledigungsquote, letzte sieben Tage, Zeit und Unteraufgaben |
+| Archiv | Archivierte Aufgaben ansehen, wiederherstellen oder löschen |
+
+Alle Ansichten arbeiten mit denselben Daten. Zusätzlich gibt es schnelle Filter für Mein Tag, nächste sieben Tage, überfällige Aufgaben und Favoriten. **Eigene Ansichten** speichern Layout, Suchbegriff, kombinierte Filter, Gruppierung und Sortierung dauerhaft. Spaltenauswahl, Zeilenabstand und zuletzt gewählte Ansicht sind Browser-Einstellungen.
+
+### Aufgaben und viele Funktionen
+
+- Anlegen, bearbeiten, erledigen/wieder öffnen, duplizieren, archivieren, wiederherstellen und löschen.
+- Titel, Beschreibung, vier Statuswerte, vier Prioritätsstufen, Projekt, Start- und Fälligkeitsdatum, Tags und Favorit.
+- Unteraufgaben mit eigener Checkliste; Notizen mit Zeitstempel; mehrere HTTP(S)-Links als Verweise.
+- Wiederholungen täglich, werktags, wöchentlich und monatlich. Beim Wechsel auf Erledigt erzeugt das Backend eine neue offene Aufgabe; wiederholtes Speichern erzeugt keine weitere. Alte Termine werden ab dem heutigen Zürcher Datum fortgeschrieben, ohne einen Aufgabenstau nachzuholen. Monatsenden werden auf ein gültiges Datum gekürzt. Unteraufgaben werden zurückgesetzt, erfasste Zeit und Notizen nicht übernommen.
+- Geplante und erfasste Minuten; Start-/Stopp-Timer im geöffneten Aufgabenfenster, minutengenau. Zeit wird erst beim Speichern dauerhaft. Der Timer läuft nicht als Windows-Hintergrundalarm und nicht über geschlossene Browserfenster hinweg.
+- Suche auch in Beschreibung, Tags und Unteraufgaben; kombinierbare Status-, Prioritäts-, Projekt-, Tag- und Terminfilter.
+- Gruppierung nach Status, Projekt, Priorität oder Termin; Sortierung nach Titel, Fälligkeit, Priorität, Projekt, Erstell-/Änderungsdatum oder gespeicherter Reihenfolge.
+- Mehrfachaktionen: Status/Projekt zuordnen, als Favorit markieren, archivieren/wiederherstellen, löschen.
+- Bis zu 30 gespeicherte Änderungen im geöffneten Tab rückgängig machen. Rückgängig wird ebenfalls auf dem Server gespeichert. Ein Neuladen oder eine externe Änderung leert den lokalen Verlauf; Dateisicherungen bleiben verfügbar.
+- Projektverwaltung mit Namen und Farben; beim Entfernen eines Projekts bleiben Aufgaben ohne Projekt erhalten.
+- Vorlagen für Wochenplanung, Einkauf und Projektstart; neue Installationen beginnen ohne Beispielaufgaben.
+- Tastatur: `N` neue Aufgabe, `/` Suche, `Esc` Detailfenster schliessen. Ungespeicherte Entwürfe fragen vor dem Verwerfen nach.
+
+### Daten, Import und Export
+
+Änderungen werden nach jeder Aktion automatisch auf dem Backend gespeichert, im Detailfenster mit „Speichern“. Fehlgeschlagene Änderungen werden nicht als gespeichert angezeigt. Revisionskonflikte verhindern, dass ein alter Browser-Tab neuere Daten überschreibt. Andere geöffnete Aufgaben-Seiten aktualisieren sich innerhalb von 30 Sekunden, solange kein Dialog offen ist.
+
+Unter „Daten“: vollständiges JSON mit Aufgaben/Projekten/eigenen Ansichten exportieren oder importieren. Beim Import **Zusammenführen** (vorhandene IDs behalten) oder **Ersetzen** wählen. CSV exportiert die gefilterten Aufgaben mit UTF-8-BOM und Semikolon für Excel. Führende Formelzeichen werden neutralisiert. CSV-Import ist nicht Bestandteil dieser Version. JSON-Import und Rückgängig lösen keine neuen Wiederholungen aus.
+
+Aufgaben liegen getrennt von der Dashboard-Konfiguration in `%ProgramData%\Homeboard\tasks.json`. Der Dashboard-JSON-Export bleibt für das Layout zuständig; Aufgaben separat exportieren. Zehn automatische Sicherungen liegen in `backups\tasks\`. Für eine Wiederherstellung Dienst stoppen, ein Aufgaben-Backup als `tasks.json` kopieren und Dienst starten. Es gelten maximal 2.000 Aufgaben, 100 Projekte, 100 gespeicherte Ansichten, 100 Unteraufgaben/50 Notizen je Aufgabe und 1 MB kompakte JSON-Daten pro Aufgabenablage. Kein externer Sync, keine Konto-/Rollenverwaltung und keine Betriebssystem-Erinnerungen in v0.2.
+
+### Upgrade von 0.1
+
+Installer über die vorhandene Installation ausführen; Dienstidentität und Datenordner bleiben gleich. Passwort, Layout und andere Widgets bleiben erhalten. Bisherige Aufgaben-/Keep-Link-Karten werden einmalig automatisch in lokale Aufgaben-Widgets umgewandelt, mit Sicherung der vorigen Konfiguration. Dies importiert keine Daten aus externen Konten. Der Google-Kalender bleibt ein unabhängiges optionales iframe-Widget. Für neue Installationen und Aufgabenverwaltung wird Google Tasks weder benötigt noch aufgerufen.
+
+## Google-Kalender
 
 Google Kalender im Browser öffnen → **Einstellungen** → unter „Einstellungen für meine Kalender“ den Kalender wählen → **Kalender integrieren** → **Code zum Einbetten**. Aus dem iframe-Code nur die URL aus `src="…"` übernehmen, typischerweise `https://calendar.google.com/calendar/embed?src=…&ctz=Europe%2FZurich`. HTML-Entities wie `&amp;` in `&` umwandeln. Diese URL im Kalender-Widget eintragen.
 
 Der Kalender muss für den Browserbenutzer zugänglich sein. Einen privaten Kalender nicht allein für Homeboard öffentlich machen. Google-Anmeldung im eingebetteten Fenster kann durch Drittanbieter-Cookie-Regeln scheitern. In diesem Fall „Öffnen“ verwenden.
-
-**Google Tasks bietet keinen offiziellen Web-Einbettungs-Link.** Die Tasks-Weboberfläche ist keine unterstützte iframe-Schnittstelle; Sicherheits- und Anmelderegeln können sie blockieren. Homeboard zeigt `tasks.google.com` deshalb immer als gestaltete Karte mit Symbol, Titel und „Öffnen“. Es wird keine funktionierende Tasks-Einbettung versprochen. Google Keep wird ebenfalls als Link geöffnet. Eine spätere Version kann eine **Google Tasks API**-Anbindung mit OAuth, sicherem Token-Speicher und eigener Listenansicht ergänzen; das ist nicht Teil von v0.1. Siehe [Tasks API](https://developers.google.com/workspace/tasks).
 
 **Ehrliche Grenzen der automatischen Erkennung:** Browser geben einer übergeordneten Seite bei fremden iframes keinen zuverlässigen Erfolg-/Fehlerstatus. Ein `load`-Ereignis beweist daher keine funktionierende Einbettung. Homeboard prüft ausschliesslich die feste, vertrauenswürdige Google-Kalender-Embed-Adresse auf HTTP-Status, `X-Frame-Options` und CSP `frame-ancestors`, mit 15 Minuten Cache. Redirects werden nicht verfolgt. Beliebige URL-Ziele werden im Backend nicht abgerufen (Schutz vor internen Netzwerkabfragen). Unbekannte, blockierte oder nicht prüfbare Ziele werden im Automatikmodus konservativ als Ersatzkarte dargestellt.
 
@@ -73,15 +124,15 @@ mac:02:aa:bb:cc:dd:ee
 ```
 
 - `127.0.0.1` und `::1` bleiben immer erlaubt, auch ohne Einträge. IPv4-gemappte IPv6-Adressen werden normalisiert. IP und CIDR unterstützen IPv4 und IPv6.
-- Whitelist gilt für Dashboard, Editor und APIs. Nur die Gestaltung der 403-Seite ist öffentlich zugänglich; sie enthält keine internen Details.
+- Whitelist gilt für Dashboard, Aufgabenverwaltung, Editor und APIs. Nur die Gestaltung der 403-Seite ist öffentlich zugänglich; sie enthält keine internen Details.
 - **Editor nur von localhost** ist standardmässig eingeschaltet und schützt auch Login- und Editor-APIs. Abschalten ermöglicht angemeldete Administration von einer erlaubten IP.
 - Eine erlaubte IP darf das Dashboard lesen, ohne Admin-Passwort. Breite Netze daher bewusst wählen. `X-Forwarded-For` und andere Proxy-Header werden ignoriert. Homeboard ist für direkten LAN-Zugriff vorgesehen, nicht hinter einem Reverse-Proxy.
 - MAC-Regeln lesen unter Windows `Get-NetNeighbor`: IPv4 über ARP, IPv6 über die Nachbartabelle/NDP, maximal 30 Sekunden Cache. Es zählt nur ein exakter Nachbareintrag für die Verbindungs-IP. Keine MAC-Daten aus dem Browser.
 - **MAC-Adressen sind nur im selben lokalen Netz sichtbar.** Hinter einem Router ist die entfernte Geräte-MAC nicht vorhanden. MAC-Spoofing ist möglich; MAC-Filter sind keine echte Sicherheitsgarantie. Auf Nicht-Windows-Systemen steht der MAC-Abgleich nicht zur Verfügung. Wenn die Nachbartabelle nicht auslesbar ist, bleibt der Zugriff verweigert, sofern keine IP-Regel passt.
-- Nur direkte Adressen `localhost` und IP-Literale werden als Host akzeptiert (Schutz gegen DNS-Rebinding). Keine eigene DNS-Adresse in v0.1.
+- Nur direkte Adressen `localhost` und IP-Literale werden als Host akzeptiert (Schutz gegen DNS-Rebinding). Keine eigene DNS-Adresse in v0.2.
 - Zugriff verweigert: animierte 403-Seite mit zwölf zufälligen Sprüchen. Log enthält Zeitpunkt und Verbindungs-IP, keine Header, URLs oder Inhalte.
 
-Das Dashboard verwendet wie angefordert **HTTP ohne TLS**. Auf entfernten Geräten ist die Übertragung einschliesslich Passwort und Cookie nicht verschlüsselt. Deshalb in v0.1 den Editor vorzugsweise lokal belassen und nur in einem vertrauenswürdigen privaten Netz freigeben. Kein Portforwarding ins Internet einrichten.
+Das Dashboard verwendet wie angefordert **HTTP ohne TLS**. Auf entfernten Geräten ist die Übertragung einschliesslich Passwort und Cookie nicht verschlüsselt. Deshalb in v0.2 den Editor vorzugsweise lokal belassen und nur in einem vertrauenswürdigen privaten Netz freigeben. Kein Portforwarding ins Internet einrichten.
 
 ## Passwort und Zugriff wiederherstellen
 
@@ -109,7 +160,9 @@ C:\Program Files\Homeboard\
   server.json                     # Bind-Adresse und Port
   dashboard.json                  # Widgets, Design, Zugriff
   auth.json                       # ausschliesslich Argon2-Hash
-  backups\dashboard-*.json         # letzte zehn Versionen
+  tasks.json                      # lokale Aufgaben, Projekte und eigene Ansichten
+  backups\dashboard-*.json         # letzte zehn Dashboard-Versionen
+  backups\tasks\tasks-*.json       # letzte zehn Aufgaben-Versionen
   logs\homeboard.*.log             # tägliche Rotation, maximal 14 Dateien
 ```
 
@@ -143,7 +196,9 @@ cargo build --locked --release --target x86_64-pc-windows-msvc
 & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\Homeboard.iss
 ```
 
-Ergebnis: `target\x86_64-pc-windows-msvc\release\homeboard.exe` und `dist\Homeboard-Setup-0.1.0-beta.exe`. Für Entwicklung auf Linux: `cargo test`, `cargo run -- --data-dir work/dev-data`; davor `server.json` mit Port 8080 anlegen. Windows-Dienst und MAC-Nachbartabelle sind nur auf Windows verfügbar. Frontend-Dateien werden im Debug-Build von rust-embed vom Dateisystem gelesen; Release-Builds betten sie ein.
+Ergebnis: `target\x86_64-pc-windows-msvc\release\homeboard.exe` und `dist\Homeboard-Setup-0.2.0-beta.exe`. Für Entwicklung auf Linux: `cargo test`, `cargo run -- --data-dir work/dev-data`; davor `server.json` mit Port 8080 anlegen. Windows-Dienst und MAC-Nachbartabelle sind nur auf Windows verfügbar. Frontend-Dateien werden im Debug-Build von rust-embed vom Dateisystem gelesen; Release-Builds betten sie ein.
+
+Zusätzlich zu `cargo test` prüft `node --test tests/tasks-core.test.mjs` mit Node (nur für Entwicklung/CI) Zeitzonen, Filter, Sortierung, Matrix und CSV. Das installierte Homeboard benötigt kein Node.
 
 Unit- und HTTP-Tests decken IP/CIDR/MAC, Hashprüfung, Session-Ablauf, Fehlversuche, atomare Konfiguration/Sicherungen, Wetter-Parsing mit Beispieldaten, Origin-/Host-Prüfung, Login, CSRF, Speichern, Revisionskonflikte und Logout ab. Der Windows-Smoke-Test installiert das Setup unbeaufsichtigt auf einem frischen GitHub-Runner, prüft LocalService/Autostart-Konfiguration, HTTP, Anmeldung, Speichern, Dienstneustart, Wiederherstellung und Deinstallation. Er führt **keinen echten Windows-Neustart** aus und testet weder physische LAN-Geräte noch SmartScreen. Nicht auf einem Rechner mit produktiven Homeboard-Daten ausführen.
 
@@ -151,7 +206,7 @@ Der [manuelle Testplan](docs/TESTPLAN.md) enthält die verbleibenden Prüfungen 
 
 ## GitHub und Releases
 
-Repository: https://github.com/747elias/Homeboard · Pre-release: https://github.com/747elias/Homeboard/releases/tag/v0.1.0-beta
+Repository: https://github.com/747elias/Homeboard · Pre-release: https://github.com/747elias/Homeboard/releases/tag/v0.2.0-beta
 
 - `build.yml`: Windows-Build, rustfmt, Clippy, Tests, Installer und Smoke-Test bei jedem Push/PR.
 - `release.yml`: dasselbe bei einem `v*`-Tag, danach SHA256SUMS und automatisches GitHub-Pre-release mit beiden EXE-Dateien. Veröffentlichung erst nach erfolgreichen Prüfungen. Zum Wiederholen fehlgeschlagene Jobs erneut ausführen; der Upload ist wiederholbar.
@@ -163,25 +218,25 @@ Exakte lokale Befehle, falls kein GitHub-Zugriff vorhanden ist (GitHub CLI):
 gh auth login
 git init -b main
 git add .
-git commit -m "Homeboard v0.1.0-beta"
+git commit -m "Homeboard v0.2.0-beta"
 # Nur falls das Repository noch nicht existiert:
 gh repo create Homeboard --public --source . --remote origin
 # Bei vorhandenem Repository stattdessen:
 # git remote add origin https://github.com/747elias/Homeboard.git
 git push -u origin main
-git tag -a v0.1.0-beta -m "Homeboard v0.1.0-beta"
-git push origin v0.1.0-beta
+git tag -a v0.2.0-beta -m "Homeboard v0.2.0-beta"
+git push origin v0.2.0-beta
 gh run list --repo 747elias/Homeboard --limit 10
 gh run watch <RUN-ID> --repo 747elias/Homeboard --exit-status
 gh run view <RUN-ID> --repo 747elias/Homeboard --log-failed
-gh release view v0.1.0-beta --repo 747elias/Homeboard
-gh release download v0.1.0-beta --repo 747elias/Homeboard
+gh release view v0.2.0-beta --repo 747elias/Homeboard
+gh release download v0.2.0-beta --repo 747elias/Homeboard
 Get-FileHash .\homeboard.exe -Algorithm SHA256
-Get-FileHash .\Homeboard-Setup-0.1.0-beta.exe -Algorithm SHA256
+Get-FileHash .\Homeboard-Setup-0.2.0-beta.exe -Algorithm SHA256
 ```
 
 ## Bekannte Grenzen der Beta
 
-Keine Google-Tasks-API, kein OAuth-Token-Speicher, kein Kalender-Proxy. iframe-Erkennung ist browserbedingt begrenzt, MAC-Regeln gelten nur direkt im LAN. Kein TLS und keine öffentlichen Hostnamen; für privaten Betrieb vorgesehen. Maximal 100 Widgets, 256 Whitelist-Einträge, 1 MB Konfiguration pro Anfrage, 12 Spalten und maximal Zeile 500. Das mobile Layout ordnet Widgets untereinander an. Eigener Code ist funktional abgeschottet, besitzt aber keine garantierte CPU-/Speicherquote. Automatische Sicherungen sind lokal und ersetzen keine externe Datensicherung. Installationsabbrüche nach Dateiübernahme können eine Reparaturinstallation erfordern. Native Windows-Systemfunktionen und reale Hardware müssen gemäss Testplan abschliessend geprüft werden.
+Lokale Aufgaben ohne externen Sync, ohne Konto-/Rollenverwaltung und ohne CSV-Import. Kein OAuth-Token-Speicher und kein Kalender-Proxy. iframe-Erkennung ist browserbedingt begrenzt, MAC-Regeln gelten nur direkt im LAN. Kein TLS und keine öffentlichen Hostnamen; für privaten Betrieb vorgesehen. Maximal 100 Widgets, 256 Whitelist-Einträge, 1 MB Konfiguration pro Anfrage, 12 Spalten und maximal Zeile 500. Das mobile Layout ordnet Widgets untereinander an. Eigener Code ist funktional abgeschottet, besitzt aber keine garantierte CPU-/Speicherquote. Automatische Sicherungen sind lokal und ersetzen keine externe Datensicherung. Installationsabbrüche nach Dateiübernahme können eine Reparaturinstallation erfordern. Native Windows-Systemfunktionen und reale Hardware müssen gemäss Testplan abschliessend geprüft werden.
 
 Lizenz: [MIT](LICENSE). Abhängigkeiten behalten ihre jeweiligen Lizenzen; [Cargo.lock](Cargo.lock) enthält die genaue Auflösung.

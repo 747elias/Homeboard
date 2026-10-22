@@ -1,7 +1,7 @@
 $ErrorActionPreference='Stop'
 $port=18080
 $install=Join-Path $env:ProgramFiles 'Homeboard'
-$setup=(Resolve-Path 'dist/Homeboard-Setup-0.1.0-beta.exe').Path
+$setup=(Resolve-Path 'dist/Homeboard-Setup-0.2.0-beta.exe').Path
 $p=Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/PORT=$port",'/LOG=installer-smoke.log' -Wait -PassThru
 if ($p.ExitCode -ne 0) { Get-Content installer-smoke.log -Tail 80; throw "Setup failed: $($p.ExitCode)" }
 try {
@@ -17,10 +17,17 @@ try {
     $config.widgets[0].title='Windows-Dienst geprüft'
     $updated=Invoke-RestMethod "$base/api/editor/config" -Method Put -Headers $headers -ContentType 'application/json' -Body ($config|ConvertTo-Json -Depth 20) -WebSession $session
     if ($updated.revision -ne 1) { throw 'Save failed' }
+    $tasks=Invoke-RestMethod "$base/api/tasks"
+    $tasks.tasks=@([pscustomobject]@{id='windows-task';title='Aufgaben unter Windows speichern';status='todo';priority=2;project='personal'})
+    $savedTasks=Invoke-RestMethod "$base/api/tasks" -Method Put -Headers $headers -ContentType 'application/json' -Body ($tasks|ConvertTo-Json -Depth 30) -WebSession $session
+    if ($savedTasks.revision -ne 1 -or $savedTasks.tasks[0].title -ne 'Aufgaben unter Windows speichern') { throw 'Tasks save failed' }
+    if ((Invoke-WebRequest "$base/tasks" -UseBasicParsing).StatusCode -ne 200) { throw 'Tasks page failed' }
     Restart-Service Homeboard
     (Get-Service Homeboard).WaitForStatus('Running',[TimeSpan]::FromSeconds(30))
     $after=Invoke-RestMethod "$base/api/dashboard"
     if ($after.widgets[0].title -ne 'Windows-Dienst geprüft') { throw 'Persistence failed' }
+    $afterTasks=Invoke-RestMethod "$base/api/tasks"
+    if ($afterTasks.tasks[0].id -ne 'windows-task') { throw 'Tasks persistence failed' }
     Stop-Service Homeboard
     & (Join-Path $install 'homeboard.exe') --reset-access --reset-password
     if ($LASTEXITCODE -ne 0) { throw 'Recovery failed' }
