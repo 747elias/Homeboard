@@ -4,10 +4,11 @@ Stand: 22. Oktober 2026. Rust/Axum/Tokio mit eingebetteter Oberfläche, ohne zus
 
 ## Gebaut und getestet
 
-- Linux: kompilierbarer Quellcode, optimierter Build, `cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings` und zwölf bestandene Unit-/HTTP-Tests.
+- Linux: kompilierbarer Quellcode, optimierter Build und eigenständig aus einem Ordner ohne Frontend-Dateien gestartete Release-Binärdatei (alle eingebetteten Assets erreichbar), `cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings` und zwölf bestandene Unit-/HTTP-Tests.
 - Chromium: Dashboard, Passwort-Erstvergabe, Login/Logout, Text-Widget, Duplizieren, Rückgängig, echtes Pointer-Drag & Drop, Grössenänderung, Speichern, Vorschau und JSON-Export/-Import ohne JavaScript-Fehler.
+- 403: echter Backend-Aufruf über die nicht erlaubte Netzwerkadresse liefert Status 403; die tatsächliche HTML-Antwort wurde als Screenshot erfasst.
 - Eigener Code: JavaScript-Zähler funktioniert im tatsächlichen Sandbox-iframe; Zugriff auf das übergeordnete Dokument wird blockiert.
-- Open-Meteo: echte Backend-Abfrage erfolgreich. Screenshots zeigen Live-Wetterdaten und die tatsächliche Browseroberfläche, keine simulierte Wetterantwort. Fünf Tage vollständig sichtbar. Desktop und mobile Darstellung geprüft.
+- Open-Meteo: echte Backend-Abfrage erfolgreich. Screenshots zeigen Live-Wetterdaten und die tatsächliche Browseroberfläche, keine simulierte Wetterantwort. Fünf Tage vollständig sichtbar. Desktop und mobile Darstellung geprüft; kein horizontaler Überlauf auf 390 px. Neue Wetterkoordinaten werden auch in der Vorschau über den angemeldeten Backend-Endpunkt geladen.
 - Windows auf GitHub `windows-latest`: erster vollständiger [Build-Lauf](https://github.com/747elias/Homeboard/actions/runs/39766738344) erfolgreich. MSVC-Build, rustfmt, Clippy, zwölf Tests und Inno-Setup-Kompilierung bestanden.
 - Derselbe Windows-Lauf hat den Installer ausgeführt und automatischen Dienst/LocalService, HTTP, Anmeldung, Speichern, Dienstneustart, Konfigurationspersistenz, Zugriff-/Passwort-Reset und Deinstallation mit Datenerhalt erfolgreich geprüft.
 
@@ -20,7 +21,8 @@ Der Windows-Dienst und der Installer sind über einen Windows-CI-Runner getestet
 - [Repository Homeboard](https://github.com/747elias/Homeboard), Branch `main`, MIT-Lizenz.
 - [Pre-release v0.1.0-beta](https://github.com/747elias/Homeboard/releases/tag/v0.1.0-beta).
 - [Build-Workflow](https://github.com/747elias/Homeboard/actions/workflows/build.yml) und [Release-Workflow](https://github.com/747elias/Homeboard/actions/workflows/release.yml).
-- Vorgesehene Release-Dateien: `homeboard.exe`, `Homeboard-Setup-0.1.0-beta.exe`, `SHA256SUMS.txt`. Der Release-Workflow veröffentlicht erst nach erfolgreichem Build und Installer-Smoke-Test. Der endgültige Lauf und die verifizierten Datei-Prüfsummen werden im Abschluss der Auslieferung festgehalten.
+- Release-Dateien: `homeboard.exe`, `Homeboard-Setup-0.1.0-beta.exe`, `SHA256SUMS.txt`. Der Release-Workflow veröffentlicht erst nach erfolgreichem Build und Installer-Smoke-Test. Die Release-Seite enthält die tatsächlich verfügbaren Dateien und ihre Metadaten.
+- [Weiterer Windows-Lauf des finalen Anwendungscodes](https://github.com/747elias/Homeboard/actions/runs/39767759323). Der vollständige Status und alle Protokolle sind über die Workflow-Links abrufbar.
 
 ## Grenzen
 
