@@ -16,6 +16,8 @@ Die Aufgabenverwaltung verwendet dieselbe Anmeldung, Whitelist, localhost-Bearbe
 - Der isolierte Browser-Smoke-Test ist im Repository enthalten und nutzt stets eine neue temporäre Aufgabenablage. Zusätzlich bestätigt: tägliche Wiederholung mit Folgeaufgabe, Mehrfach-Archivierung mit Rückgängig, Projektanlage und Aufgaben-Widget im Editor/Dashboard.
 - Windows-Workflows führen MSVC-Build, rustfmt, Clippy, Rust-/JavaScript-Tests, Browser-Smoke-Test mit Microsoft Edge, Inno-Setup und den Installer-Smoke-Test aus. Dieser prüft Installation, LocalService/Autostart-Konfiguration, HTTP, Anmeldung, Dashboard-/Aufgaben-Speichern, Persistenz nach Dienstneustart, Reset und Deinstallation mit Datenerhalt.
 
+Der erste [Windows-Lauf für 0.2](https://github.com/747elias/Homeboard/actions/runs/39777983886) hat MSVC-Build, alle 17 Rust-Tests und vier JavaScript-Testgruppen, Installer und Dienst-/Aufgaben-Persistenzprüfung erfolgreich abgeschlossen. Die Browserprüfung im Windows-Runner ist im anschliessenden Workflow ergänzt.
+
 Die konkreten Ergebnisse der Windows-Läufe und Release-Uploads sind über die folgenden Links dokumentiert. Die Chat-Auslieferung nennt den verifizierten Endstand.
 
 ## Links und Dateien

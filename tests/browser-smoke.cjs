@@ -40,7 +40,7 @@ async function cleanup() {
     path.join(tempDir, "server.json"),
     JSON.stringify({ bind: "127.0.0.1", port }),
   );
-  testServer = spawn(executable, ["--data-dir", tempDir], { stdio: "ignore" });
+  testServer = spawn(executable, ["--data-dir", tempDir], { stdio: "ignore", cwd: tempDir });
   const base = "http://127.0.0.1:" + port;
   let ready = false;
   for (let i = 0; i < 40; i++) {
