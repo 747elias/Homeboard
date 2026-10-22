@@ -13,7 +13,8 @@ Die Aufgabenverwaltung verwendet dieselbe Anmeldung, Whitelist, localhost-Bearbe
 - 17 Rust-Unit-/HTTP-Tests: bisherige Schutzmechanismen, Aufgaben-Persistenz/Sicherungen, Datenvalidierung, Monatsende/Werktage, wiederholtes Speichern, Migration alter Karten, Session-/CSRF-/Revisionsschutz und Leser-/Bearbeiterzugriff.
 - Vier JavaScript-Testgruppen: Zürcher Tagesgrenze/Sommerzeit, kombinierte Filter/Unteraufgabensuche, Sortierung/Matrix und Excel-Formelschutz im CSV.
 - Browserprüfung: alle elf Ansichten, neue Aufgabe/Details, direkte Prioritätsänderung, Suche, Gruppierung, Spalten, gespeicherte Ansicht, Unteraufgabe, Notiz, Zeit, Duplizieren, Rückgängig, Kanban-Drag-and-drop, Export/Import, Archiv/Wiederherstellung und Anmeldung. Screenshots enthalten eigens angelegte Testaufgaben aus der tatsächlichen Anwendung.
-- Windows-Workflows führen MSVC-Build, rustfmt, Clippy, Rust-/JavaScript-Tests, Inno-Setup und den Installer-Smoke-Test aus. Dieser prüft Installation, LocalService/Autostart-Konfiguration, HTTP, Anmeldung, Dashboard-/Aufgaben-Speichern, Persistenz nach Dienstneustart, Reset und Deinstallation mit Datenerhalt.
+- Der isolierte Browser-Smoke-Test ist im Repository enthalten und nutzt stets eine neue temporäre Aufgabenablage. Zusätzlich bestätigt: tägliche Wiederholung mit Folgeaufgabe, Mehrfach-Archivierung mit Rückgängig, Projektanlage und Aufgaben-Widget im Editor/Dashboard.
+- Windows-Workflows führen MSVC-Build, rustfmt, Clippy, Rust-/JavaScript-Tests, Browser-Smoke-Test mit Microsoft Edge, Inno-Setup und den Installer-Smoke-Test aus. Dieser prüft Installation, LocalService/Autostart-Konfiguration, HTTP, Anmeldung, Dashboard-/Aufgaben-Speichern, Persistenz nach Dienstneustart, Reset und Deinstallation mit Datenerhalt.
 
 Die konkreten Ergebnisse der Windows-Läufe und Release-Uploads sind über die folgenden Links dokumentiert. Die Chat-Auslieferung nennt den verifizierten Endstand.
 

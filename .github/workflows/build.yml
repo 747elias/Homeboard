@@ -19,6 +19,17 @@ jobs:
       - run: cargo clippy --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings
       - run: cargo test --locked --target x86_64-pc-windows-msvc
       - run: cargo build --locked --release --target x86_64-pc-windows-msvc
+      - name: Aufgaben im Windows-Browser prüfen
+        shell: pwsh
+        run: |
+          npm install --prefix work/browser-tools --no-save playwright-core@1.57.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:HOMEBOARD_PLAYWRIGHT_MODULE=(Resolve-Path work/browser-tools/node_modules/playwright-core).Path
+          $env:HOMEBOARD_TEST_EXE=(Resolve-Path target/x86_64-pc-windows-msvc/release/homeboard.exe).Path
+          $env:HOMEBOARD_CHROMIUM="${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+          if (!(Test-Path $env:HOMEBOARD_CHROMIUM)) { $env:HOMEBOARD_CHROMIUM="$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe" }
+          node tests/browser-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Installer kompilieren
         shell: pwsh
         run: |

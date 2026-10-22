@@ -1,22 +1,224 @@
-export const statuses = {todo:'Offen',doing:'In Arbeit',waiting:'Wartet',done:'Erledigt'};
-export const priorities = {0:'Keine',1:'Niedrig',2:'Mittel',3:'Hoch'};
-export const layouts = {table:['▤','Tabelle'],list:['☰','Liste'],kanban:['▥','Kanban'],calendar:['▦','Kalender'],week:['▤','Wochenplan'],agenda:['◷','Agenda'],timeline:['⇥','Zeitleiste'],matrix:['⊞','Prioritätenmatrix'],projects:['▣','Projekte'],stats:['◴','Statistiken'],archive:['▧','Archiv']};
-export const defaultFilter = () => ({search:'',status:'',priority:'',project:'',tag:'',when:'',favorites:false,show_completed:false,group:'none',sort:'order',direction:'asc'});
-export function todayKey(now=new Date()) {const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Zurich',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);const get=t=>parts.find(p=>p.type===t).value;return `${get('year')}-${get('month')}-${get('day')}`;}
-export function addDays(day,n) { const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10); }
-export function daysBetween(a,b){return Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/86400000);}
-export function monday(day){const d=new Date(day+'T12:00:00Z');return addDays(day,-((d.getUTCDay()+6)%7));}
-export function formatDate(day,options={day:'numeric',month:'short'}) {return day?new Date(day+'T12:00:00Z').toLocaleDateString('de-CH',{timeZone:'Europe/Zurich',...options}):'Ohne Termin';}
-export function dueLabel(day,today=todayKey()){if(!day)return 'Ohne Termin';const n=daysBetween(today,day);return n===0?'Heute':n===1?'Morgen':n===-1?'Gestern':formatDate(day,day.slice(0,4)!==today.slice(0,4)?{day:'numeric',month:'short',year:'numeric'}:{day:'numeric',month:'short'});}
-export function filterTasks(tasks,f,archive=false,today=todayKey()) {
- const search=f.search.trim().toLocaleLowerCase('de');
- return tasks.filter(t=>t.archived===archive && (f.show_completed||f.status==='done'||t.status!=='done') && (!f.status||t.status===f.status) && (f.priority===''||String(t.priority)===f.priority) && (!f.project||(f.project==='__none'?!t.project:t.project===f.project)) && (!f.tag||t.tags.includes(f.tag)) && (!f.favorites||t.starred)
- && (!search||[t.title,t.description,...t.tags,...t.subtasks.map(s=>s.title)].join(' ').toLocaleLowerCase('de').includes(search))
- && (!f.when||(f.when==='today'&&t.due===today)||(f.when==='overdue'&&t.due&&t.due<today)||(f.when==='week'&&t.due&&t.due>=today&&t.due<=addDays(today,7))||(f.when==='none'&&!t.due)));
+export const statuses = {
+  todo: "Offen",
+  doing: "In Arbeit",
+  waiting: "Wartet",
+  done: "Erledigt",
+};
+export const priorities = { 0: "Keine", 1: "Niedrig", 2: "Mittel", 3: "Hoch" };
+export const layouts = {
+  table: ["▤", "Tabelle"],
+  list: ["☰", "Liste"],
+  kanban: ["▥", "Kanban"],
+  calendar: ["▦", "Kalender"],
+  week: ["▤", "Wochenplan"],
+  agenda: ["◷", "Agenda"],
+  timeline: ["⇥", "Zeitleiste"],
+  matrix: ["⊞", "Prioritätenmatrix"],
+  projects: ["▣", "Projekte"],
+  stats: ["◴", "Statistiken"],
+  archive: ["▧", "Archiv"],
+};
+export const defaultFilter = () => ({
+  search: "",
+  status: "",
+  priority: "",
+  project: "",
+  tag: "",
+  when: "",
+  favorites: false,
+  show_completed: false,
+  group: "none",
+  sort: "order",
+  direction: "asc",
+});
+export function todayKey(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Zurich",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
-export function sortTasks(tasks,f,projects=[]) {return [...tasks].sort((a,b)=>{let x=a[f.sort],y=b[f.sort];if(f.sort==='priority'){x=-a.priority;y=-b.priority;}else if(f.sort==='due'){x=a.due||'9999';y=b.due||'9999';}else if(f.sort==='project'){x=projects.find(p=>p.id===a.project)?.name||'';y=projects.find(p=>p.id===b.project)?.name||'';}const c=typeof x==='number'?x-y:String(x??'').localeCompare(String(y??''),'de',{numeric:true});return (c||a.id.localeCompare(b.id))*(f.direction==='desc'?-1:1);});}
-export function groupTasks(tasks,key,projects=[]) {const groups=new Map();const label=t=>key==='status'?statuses[t.status]:key==='priority'?priorities[t.priority]:key==='project'?(projects.find(p=>p.id===t.project)?.name||'Ohne Projekt'):key==='due'?dueLabel(t.due):'';for(const t of tasks){const k=label(t);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(t);}return groups;}
-export function newId(){return globalThis.crypto?.randomUUID?.()||`t-${Date.now()}-${Math.random().toString(16).slice(2)}`;}
-export function newTask(title='',today=todayKey()){const stamp=new Date().toISOString();return {id:newId(),title,description:'',status:'todo',priority:0,due:null,start:null,project:'',tags:[],subtasks:[],notes:[],links:[],starred:false,archived:false,recurrence:'none',estimate_minutes:0,spent_minutes:0,created_at:stamp,updated_at:stamp,completed_at:null,order:Date.now()};}
-export function matrixCell(t,today=todayKey()){const urgent=t.due&&t.due<=addDays(today,3),important=t.priority>=2;return important?(urgent?0:1):(urgent?2:3);}
-export function csvExport(tasks,projects=[]) {const clean=v=>{let s=String(v??'');if(/^[\s]*[=+@\-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};const rows=[['Titel','Status','Priorität','Projekt','Start','Fällig','Tags','Unteraufgaben','Geschätzt (Min)','Erfasst (Min)','Beschreibung']];for(const t of tasks)rows.push([t.title,statuses[t.status],priorities[t.priority],projects.find(p=>p.id===t.project)?.name||'',t.start,t.due,t.tags.join(', '),`${t.subtasks.filter(s=>s.done).length}/${t.subtasks.length}`,t.estimate_minutes,t.spent_minutes,t.description]);return '\uFEFF'+rows.map(r=>r.map(clean).join(';')).join('\r\n');}
+export function addDays(day, n) {
+  const d = new Date(day + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+export function daysBetween(a, b) {
+  return Math.round(
+    (new Date(b + "T12:00:00Z") - new Date(a + "T12:00:00Z")) / 86400000,
+  );
+}
+export function monday(day) {
+  const d = new Date(day + "T12:00:00Z");
+  return addDays(day, -((d.getUTCDay() + 6) % 7));
+}
+export function formatDate(day, options = { day: "numeric", month: "short" }) {
+  return day
+    ? new Date(day + "T12:00:00Z").toLocaleDateString("de-CH", {
+        timeZone: "Europe/Zurich",
+        ...options,
+      })
+    : "Ohne Termin";
+}
+export function dueLabel(day, today = todayKey()) {
+  if (!day) return "Ohne Termin";
+  const n = daysBetween(today, day);
+  return n === 0
+    ? "Heute"
+    : n === 1
+      ? "Morgen"
+      : n === -1
+        ? "Gestern"
+        : formatDate(
+            day,
+            day.slice(0, 4) !== today.slice(0, 4)
+              ? { day: "numeric", month: "short", year: "numeric" }
+              : { day: "numeric", month: "short" },
+          );
+}
+export function filterTasks(tasks, f, archive = false, today = todayKey()) {
+  const search = f.search.trim().toLocaleLowerCase("de");
+  return tasks.filter(
+    (t) =>
+      t.archived === archive &&
+      (f.show_completed || f.status === "done" || t.status !== "done") &&
+      (!f.status || t.status === f.status) &&
+      (f.priority === "" || String(t.priority) === f.priority) &&
+      (!f.project ||
+        (f.project === "__none" ? !t.project : t.project === f.project)) &&
+      (!f.tag || t.tags.includes(f.tag)) &&
+      (!f.favorites || t.starred) &&
+      (!search ||
+        [t.title, t.description, ...t.tags, ...t.subtasks.map((s) => s.title)]
+          .join(" ")
+          .toLocaleLowerCase("de")
+          .includes(search)) &&
+      (!f.when ||
+        (f.when === "today" && t.due === today) ||
+        (f.when === "overdue" && t.due && t.due < today) ||
+        (f.when === "week" &&
+          t.due &&
+          t.due >= today &&
+          t.due <= addDays(today, 7)) ||
+        (f.when === "none" && !t.due)),
+  );
+}
+export function sortTasks(tasks, f, projects = []) {
+  return [...tasks].sort((a, b) => {
+    let x = a[f.sort],
+      y = b[f.sort];
+    if (f.sort === "priority") {
+      x = -a.priority;
+      y = -b.priority;
+    } else if (f.sort === "due") {
+      x = a.due || "9999";
+      y = b.due || "9999";
+    } else if (f.sort === "project") {
+      x = projects.find((p) => p.id === a.project)?.name || "";
+      y = projects.find((p) => p.id === b.project)?.name || "";
+    }
+    const c =
+      typeof x === "number"
+        ? x - y
+        : String(x ?? "").localeCompare(String(y ?? ""), "de", {
+            numeric: true,
+          });
+    return (c || a.id.localeCompare(b.id)) * (f.direction === "desc" ? -1 : 1);
+  });
+}
+export function groupTasks(tasks, key, projects = []) {
+  const groups = new Map();
+  const label = (t) =>
+    key === "status"
+      ? statuses[t.status]
+      : key === "priority"
+        ? priorities[t.priority]
+        : key === "project"
+          ? projects.find((p) => p.id === t.project)?.name || "Ohne Projekt"
+          : key === "due"
+            ? dueLabel(t.due)
+            : "";
+  for (const t of tasks) {
+    const k = label(t);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(t);
+  }
+  return groups;
+}
+export function newId() {
+  return (
+    globalThis.crypto?.randomUUID?.() ||
+    `t-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  );
+}
+export function newTask(title = "", today = todayKey()) {
+  const stamp = new Date().toISOString();
+  return {
+    id: newId(),
+    title,
+    description: "",
+    status: "todo",
+    priority: 0,
+    due: null,
+    start: null,
+    project: "",
+    tags: [],
+    subtasks: [],
+    notes: [],
+    links: [],
+    starred: false,
+    archived: false,
+    recurrence: "none",
+    estimate_minutes: 0,
+    spent_minutes: 0,
+    created_at: stamp,
+    updated_at: stamp,
+    completed_at: null,
+    order: Date.now(),
+  };
+}
+export function matrixCell(t, today = todayKey()) {
+  const urgent = t.due && t.due <= addDays(today, 3),
+    important = t.priority >= 2;
+  return important ? (urgent ? 0 : 1) : urgent ? 2 : 3;
+}
+export function csvExport(tasks, projects = []) {
+  const clean = (v) => {
+    let s = String(v ?? "");
+    if (/^[\s]*[=+@\-]/.test(s)) s = "'" + s;
+    return '"' + s.replaceAll('"', '""') + '"';
+  };
+  const rows = [
+    [
+      "Titel",
+      "Status",
+      "Priorität",
+      "Projekt",
+      "Start",
+      "Fällig",
+      "Tags",
+      "Unteraufgaben",
+      "Geschätzt (Min)",
+      "Erfasst (Min)",
+      "Beschreibung",
+    ],
+  ];
+  for (const t of tasks)
+    rows.push([
+      t.title,
+      statuses[t.status],
+      priorities[t.priority],
+      projects.find((p) => p.id === t.project)?.name || "",
+      t.start,
+      t.due,
+      t.tags.join(", "),
+      `${t.subtasks.filter((s) => s.done).length}/${t.subtasks.length}`,
+      t.estimate_minutes,
+      t.spent_minutes,
+      t.description,
+    ]);
+  return "\uFEFF" + rows.map((r) => r.map(clean).join(";")).join("\r\n");
+}

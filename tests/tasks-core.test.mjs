@@ -1,9 +1,89 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {todayKey,addDays,monday,filterTasks,sortTasks,matrixCell,csvExport,newTask} from '../web/tasks-core.mjs';
-const tasks=[{...newTask('Arbeit planen'),id:'a',project:'work',due:'2026-10-22',priority:3,tags:['Planung'],subtasks:[{title:'Rechnung prüfen',done:false}]},{...newTask('Einkaufen'),id:'b',due:'2026-10-24',priority:1},{...newTask('Fertig'),id:'c',status:'done'},{...newTask('Archiv'),id:'d',archived:true}];
-const base={search:'',status:'',priority:'',project:'',tag:'',when:'',favorites:false,show_completed:false,sort:'due',direction:'asc'};
-test('Zurich date, DST-safe arithmetic and week start',()=>{assert.equal(todayKey(new Date('2026-10-24T23:30:00Z')),'2026-10-25');assert.equal(addDays('2026-10-25',1),'2026-10-26');assert.equal(monday('2026-10-25'),'2026-10-19');});
-test('composable filters, subtasks search, completion and archive',()=>{assert.equal(filterTasks(tasks,base,false,'2026-10-22').length,2);assert.equal(filterTasks(tasks,{...base,search:'Rechnung',project:'work',tag:'Planung',when:'today'},false,'2026-10-22')[0].id,'a');assert.equal(filterTasks(tasks,{...base,project:'__none'},false,'2026-10-22')[0].id,'b');assert.equal(filterTasks(tasks,{...base,status:'done'},false,'2026-10-22')[0].id,'c');assert.equal(filterTasks(tasks,base,true,'2026-10-22')[0].id,'d');});
-test('priority sort and matrix classification',()=>{assert.equal(sortTasks(tasks,{...base,sort:'priority'})[0].id,'a');assert.equal(matrixCell(tasks[0],'2026-10-22'),0);assert.equal(matrixCell(tasks[1],'2026-10-22'),2);assert.equal(matrixCell({...tasks[0],due:'2026-11-01'},'2026-10-22'),1);});
-test('CSV escapes newlines and quotes and neutralises Excel formulas',()=>{const csv=csvExport([{...tasks[0],title:'=HYPERLINK("evil")',description:'Zeile 1\nZeile 2'}]);assert.ok(csv.startsWith('\uFEFF'));assert.ok(csv.includes('"\'=HYPERLINK(""evil"")"'));assert.ok(csv.includes('Zeile 1\nZeile 2'));});
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  todayKey,
+  addDays,
+  monday,
+  filterTasks,
+  sortTasks,
+  matrixCell,
+  csvExport,
+  newTask,
+} from "../web/tasks-core.mjs";
+const tasks = [
+  {
+    ...newTask("Arbeit planen"),
+    id: "a",
+    project: "work",
+    due: "2026-10-22",
+    priority: 3,
+    tags: ["Planung"],
+    subtasks: [{ title: "Rechnung prüfen", done: false }],
+  },
+  { ...newTask("Einkaufen"), id: "b", due: "2026-10-24", priority: 1 },
+  { ...newTask("Fertig"), id: "c", status: "done" },
+  { ...newTask("Archiv"), id: "d", archived: true },
+];
+const base = {
+  search: "",
+  status: "",
+  priority: "",
+  project: "",
+  tag: "",
+  when: "",
+  favorites: false,
+  show_completed: false,
+  sort: "due",
+  direction: "asc",
+};
+test("Zurich date, DST-safe arithmetic and week start", () => {
+  assert.equal(todayKey(new Date("2026-10-24T23:30:00Z")), "2026-10-25");
+  assert.equal(addDays("2026-10-25", 1), "2026-10-26");
+  assert.equal(monday("2026-10-25"), "2026-10-19");
+});
+test("composable filters, subtasks search, completion and archive", () => {
+  assert.equal(filterTasks(tasks, base, false, "2026-10-22").length, 2);
+  assert.equal(
+    filterTasks(
+      tasks,
+      {
+        ...base,
+        search: "Rechnung",
+        project: "work",
+        tag: "Planung",
+        when: "today",
+      },
+      false,
+      "2026-10-22",
+    )[0].id,
+    "a",
+  );
+  assert.equal(
+    filterTasks(tasks, { ...base, project: "__none" }, false, "2026-10-22")[0]
+      .id,
+    "b",
+  );
+  assert.equal(
+    filterTasks(tasks, { ...base, status: "done" }, false, "2026-10-22")[0].id,
+    "c",
+  );
+  assert.equal(filterTasks(tasks, base, true, "2026-10-22")[0].id, "d");
+});
+test("priority sort and matrix classification", () => {
+  assert.equal(sortTasks(tasks, { ...base, sort: "priority" })[0].id, "a");
+  assert.equal(matrixCell(tasks[0], "2026-10-22"), 0);
+  assert.equal(matrixCell(tasks[1], "2026-10-22"), 2);
+  assert.equal(matrixCell({ ...tasks[0], due: "2026-11-01" }, "2026-10-22"), 1);
+});
+test("CSV escapes newlines and quotes and neutralises Excel formulas", () => {
+  const csv = csvExport([
+    {
+      ...tasks[0],
+      title: '=HYPERLINK("evil")',
+      description: "Zeile 1\nZeile 2",
+    },
+  ]);
+  assert.ok(csv.startsWith("\uFEFF"));
+  assert.ok(csv.includes('"\'=HYPERLINK(""evil"")"'));
+  assert.ok(csv.includes("Zeile 1\nZeile 2"));
+});
